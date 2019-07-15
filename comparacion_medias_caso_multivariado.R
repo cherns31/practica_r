@@ -46,7 +46,8 @@ t2 = d2*((n1*n2) / (n1+n2))
 f = (n1+n2-p-1)/(
   (n1+n2-2)*p) * t2
 
-
+fit = hotelling.test(.~Especie, data = avispas)
+fit # Rechazo H0, igualdad de vectores medios y puedo seguir
 
 alfa = 0.05
 
