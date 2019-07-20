@@ -907,3 +907,104 @@ fviz_cluster(object = km_clusters, data = datos, show.clust.cent = TRUE, ellipse
   theme(legend.position = "none") # Los grafico con componentes ppales
 ```
 
+
+
+# PCA
+
+Datos:
+
+```{r}
+library(FactoMineR)
+data(decathlon2)
+decathlon2.active <- decathlon2[1:23, 1:10]
+head(decathlon2.active[, 1:6])
+```
+
+PCA:
+
+```{r}
+res.pca <- prcomp(decathlon2.active, scale = TRUE)
+```
+
+Screeplot para ver cuanto explica cada eje:
+
+```{r}
+fviz_eig(res.pca)
+```
+
+Ver a los individuos en los ejes:
+
+```{r}
+fviz_pca_ind(res.pca , repel = T)
+```
+
+Biplot
+
+```{r}
+fviz_pca_biplot(res.pca, repel = TRUE,
+                col.var = "#2E9FDF", # Variables color
+                col.ind = "#696969"  # Individuals color
+                )
+```
+
+Acceso a resultados:
+
+```{r}
+# Eigenvalues
+eig.val <- get_eigenvalue(res.pca)
+eig.val
+  
+# Results for Variables
+res.var <- get_pca_var(res.pca)
+res.var$coord          # Coordinates
+res.var$contrib        # Contributions to the PCs
+res.var$cos2           # Quality of representation 
+
+# Results for individuals
+res.ind <- get_pca_ind(res.pca)
+res.ind$coord          # Coordinates
+res.ind$contrib        # Contributions to the PCs
+res.ind$cos2           # Quality of representation
+```
+
+# MCA
+
+Datos:
+```{r}
+data(poison)
+poison.active <- poison[1:55, 5:15]
+head(poison.active[, 1:6], 3)
+```
+
+
+Análisis:
+
+
+```{r}
+res.mca <- MCA(poison.active, graph = FALSE)
+print(res.mca)
+```
+
+Autovalores:
+
+```{r}
+(eig.val <- get_eigenvalue(res.mca))
+fviz_screeplot(res.mca, addlabels = TRUE, ylim = c(0, 45))
+```
+
+Biplot:
+
+```{r}
+fviz_mca_biplot(res.mca, 
+               repel = TRUE, # Avoid text overlapping (slow if many point)
+               ggtheme = theme_minimal())
+```
+
+Individuals:
+
+```{r}
+ind <- get_mca_ind(res.mca)
+ind$coord
+fviz_mca_ind(res.mca, repel = TRUE, ggtheme = theme_grey())
+```
+
