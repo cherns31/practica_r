@@ -1,0 +1,909 @@
+---
+title: "Segundo Parcial"
+output: html_notebook
+---
+
+# Muestras normales independientes con varianzas conocida
+
+El interés radica en realizar inferencias acerca del parámetro diferencia de medias de las dos poblaciones dado por µ X − µ Y. Se trata de 2 poblaciones normales con varianzas conocidas.
+
+Las hipótesis para testear en nuestro ejemplo serán entonces:
+ 
+H0 : µX − µY = 0
+H1 : µX − µY != 0
+
+Como se trata de una hipótesis alternativa bilateral, valores muy grandes o muy pequeños del estadístico de contraste conducirán a rechazar la hipótesis de nulidad
+
+```{r}
+library(BSDA)
+
+x <- rep(6.58, 20)
+y <- rep(5.74, 20)
+
+z.test(x, sigma.x=sqrt(0.85), y, sigma.y=sqrt(1.22), conf.level=0.95)
+
+```
+
+Rechazamos H0 dado que el p-valor es menor a nuestro nivel de confianza 5%. Y también nos devuelve el IC, que como es lógico no contiene al 0.
+
+
+# Muestras normales independientes con varianzas desconocida
+
+Si se pudiera asegurar que ambas muestras provienen de distribuciones normales con la misma varianza, entonces el modelo podría de?nirse como dos muestras normales independientes con medias distintas y varianzas iguales pero desconocidas.
+
+Las hipótesis de interés para este caso son
+H0 : µY − µX ≥ 0
+H1 : µY − µX < 0
+
+Se trata de una prueba unilateral a derecha, por lo cual se rechaza la hipótesis nula cuando el estadístico de contraste toma valores bajos.
+
+Se debe testear antes igualidad de varianzas, para ver qué test usar:
+
+```{r}
+
+set.seed(10)
+x = rnorm(15, 17.2, 0.7)
+y = rnorm(15, 18.3, 0.8)
+
+var(x)
+var(y)
+
+boxplot(x, y, col = "grey")
+
+var.test(x,y)
+
+
+```
+Como no rechazo igualdad de varianzas, entonces uso el test T.
+
+```{r}
+t.test(y, x, var.equal = T)
+```
+
+Como el p-valor es menor a mi NC, rechazo H0. 
+A su vez, es mayor al t de mi NC:
+
+```{r}
+(valor_critico = qt(.99, df = length(x)+length(y)-2, lower.tail = T))
+(estadistico =t.test(y, x, var.equal = T)$statistic)
+valor_critico < estadistico
+```
+
+
+
+
+# Muestras independientes de poblaciones cualesquiera
+
+Si las muestras son suficientemente grandes, es posible aplicar la distribución Normal, basándonos en el Teorema del Límite Central que tiene un nivel aproximado o asintótico.
+
+Para este tipo de experimento, las hipótesis de interés son:
+H0 : µX − µY = 0
+H1 : µX − µY != 0
+
+```{r}
+varones = rnorm(124, 6.6, 4.3)
+mujeres = rnorm(110, 5.4, 3.6)
+
+z.test(varones, mujeres, sigma.x = sd(varones), sigma.y = sd(mujeres), conf.level = .99)
+```
+
+Si comparamos con un alfa de .01, entonces no rechazamos H0.
+
+```{r}
+(valor_critico = qnorm(.99, lower.tail = T))
+(estadistico = z.test(varones, mujeres, sigma.x = sd(varones), sigma.y = sd(mujeres))$statistic)
+valor_critico < estadistico
+```
+
+
+# Muestras apareadas
+
+Aqui las 2 muestras no son independientes. El interes no es evaluar si la media del primer conjunto es diferente a la del segundo, si no estudiar la media de las diferencias por individuo.
+
+T = D − µD /  (Sd/√N) 
+H0 : µD ≤ 0
+H1 : µD > 0
+
+```{r}
+fumar <- data.frame(sujeto = c(1:12), 
+                    anterior = c(60,78,64,68,72,76,74,46,48,60,64,27),
+                    posterior = c(70,82,66,69,75,72,77,49,54,66,69,36)
+                    )
+
+fumar$diferencia = fumar$posterior - fumar$anterior
+
+mean(fumar$diferencia)
+
+t.test(fumar$posterior, fumar$anterior, paired = T)
+
+```
+
+Rechazo H0, pues el valor es menor a mi NC 0.05.
+
+
+
+
+
+
+# Test de Mann-Whitney-Wilcoxon
+
+Alternativas no paramétricas, libres de distribucion, basados en rangos o scores, cuando la normalidad no se satisface.
+
+Este test tiene dos modelos posibles. Cada uno de ellos, permite testear diferentes hipótesis respecto de las poblaciones de las cuales provienen los datos.
+
+Si las muestras provienen de poblaciones con similar distribución, si hay diferencia se debe a la posición central de la distribución.
+
+H0 : ~µX - ~µY = 0
+H1 : ~µX -  ~µX != 0
+
+
+Si no se puede afirmar eso, entonces el test es:
+
+H0 : ∀x : F(x) = G(x)
+H1 : ∃x : F(x) != G(x)
+
+
+La hipótesis nula a?rma que las dos distribuciones poblacionales son iguales, lo cual sería un caso equivalente a la H0 del Modelo 1. Mientras que la hipótesis alternativa dice que las dos distribuciones difieren de algún modo, sin indicar de qué modo.
+
+```{r}
+arbequina <- data.frame(aceite = c(34.5,20.1,21.8,18.2,19.5,20.2,22.5,23.9,22.1,24.2))
+carolea <- data.frame(aceite = c(16.4,14.8,17.8,12.3,11.9,15.5,13.4,16.0,15.8,16.2))
+
+shapiro.test(arbequina$aceite)  # Rechazo H0 de normalidad
+shapiro.test(carolea$aceite) # No rechazo H0 de normalidad
+```
+
+Como rechazo la normalidad de las arbequinas, paso a un test no paramétrico.
+
+
+Para poder decir que las medianas son diferentes deben tener dist. similar sI no solo digo que las distribuciones son diferentes.
+
+
+```{r}
+arbequina$variedad = "arbequina"
+carolea$variedad = "carolea"
+
+df = rbind(arbequina, carolea)
+
+ggplot(df, aes(variedad, aceite))+
+  geom_boxplot(mapping = aes(fill = variedad))
+```
+
+Aqui las distribuciones son similares por tanto vale la comparacion de medianas, pero no siempre es el caso. Aplicamos el test.
+
+
+```{r}
+wilcox.test(arbequina$aceite, carolea$aceite, alternative = "two.sided") 
+```
+
+Y rechazo la igualdad de medias.
+
+Si las distribuciones de las muestras son muy diferentes se debe tener en cuenta que en este caso, el test de Mann-Whitney-Wilcoxon no es un test para el parámetro de posición. Por lo tanto, si rechazamos la hipótesis nula, podemos concluir que las distribuciones difieren pero no sabemos de qué modo difieren.
+
+
+
+# Test de la Mediana
+
+Este test posee las siguientes características:
+  -Puede generalizarse a más de dos grupos y resulta ser una alternativa al test   de Mann-Whitney-Wilcoxon cuando interesa un test para el parámetro de
+  posición.
+  -Puede aplicarse sin que se cumpla el supuesto de igualdad distribucional de     las dos poblaciones.
+  -Puede ser usado con datos numéricos u ordinales.
+
+
+H0 : θX = θY
+H1 : θX != θY
+
+```{r}
+library (RVAideMemoire)
+aceite =  rbind(arbequina, carolea)
+mood.medtest(aceite~variedad , data=aceite )
+```
+
+Concluimos que rechazamos la hipótesis de la igualdad de las medianas de las dos variedades.
+
+
+# ANOVA
+
+¿Qué ocurre si se desea comparar las medias de varios grupos? LA respuesta para este problema, desarrollada por Fisher entre los años 1920 y 1930, es comparar las medias de tres o más poblaciones independientes con distribuciones normales de igual varianza. El análisis que desarrollaremos a continuación y se denomina Análisis de la varianza (ADEVA) o, en inglés, analysis of variance (ANOVA)
+
+La hipótesis a testear son
+H0 : µ1 = µ2 = ··· = µk
+H1 : µi != µj para algún par (i,j)
+
+```{r}
+te <- data.frame(marca= c(rep("Marca 1", 7), rep("Marca 2", 6), rep("Marca 3",6), rep("Marca 4",6)),
+                 vitamina_b = c(7.9, 6.2, 6.6, 8.6, 8.9, 10.1, 9.6 , 5.7, 7.5, 9.8, 6.1, 8.4, 7.2, 6.8, 7.8, 5.1 , 7.4 , 5.3, 6.1 , 6.4 , 7.1 , 7.9 , 4.5 , 5, 4))
+head(te)
+```
+
+Realizamos el test F:
+
+```{r}
+te_anova = aov(vitamina_b~marca, te)
+summary(t_anova) # Rechazamos H0: al menos una media difiere
+
+```
+
+Suponiendo en primera instancia que se veri?can los supuestos del modelo del análisis de la varianzael test F rechaza la igualdad de medias a nivel 0.05. Ahora, antes de tomar una decisión, se debe estudiar si los supuestos del contraste se satisfacen con el objeto de ver si la conclusión es válida. Para ello se realiza el diagnóstico del modelo que será desarrollado en la próxima sección.
+
+
+# Tests de Homocedasticidad
+
+## Boxplot
+
+Con un Boxplot, a ojo, las cajas parecen ser todas de igual ancho y sin outliers
+
+
+```{r}
+ggplot(te, mapping = aes(y = vitamina_b, x= marca, fill = marca))+
+  geom_boxplot()
+
+```
+
+## Test de Bartlet
+
+Pero tenemos test más precisos, como el de Bartlet.
+
+H0 : σ1 = σ2 = ··· = σk
+H1 : ∃(i,j) : σi != σj
+
+
+```{r}
+bartlett.test(te$vitamina_b, te$marca)
+```
+
+El test de Bartlett no rechaza la hipotesis de nulidad; es decir, no hay evidencia estadística significativa de que la varianza de alguno de los subgrupos difiera de las otras. El problema de este test es su sensibilidad a la falta de normalidad. Esto implica que puede ocurrir que el mismo rechace la hipótesis nula por no cumplirse el supuesto de normalidad en lugar
+de rechazarla por no cumplirse el supuesto de homocedasticidad. Una alternativa más robusta, lo que signi?ca que no es sensible a la falta de normalidad o a la presencia de algún valor atípico, la brinda el test de Levene.
+
+## Test de Levene
+
+Este tiene las mismas hipótesis:
+
+```{r}
+library(car)
+leveneTest(te$vitamina_b, te$marca)
+```
+
+Como el p-valor de la prueba es 0.8286, no se rechaza la hipótesis de homocedasticidad. Esto significa que el test de Levene no rechaza la hipótesis nula de homocedasticidad, lo que brinda la misma conclusión que el test de Bartlett. Por lo tanto, podemos suponer que se cumple la hipótesis
+de homocedasticidad.
+
+
+# Tests de Normalidad
+
+## QQPlot
+
+La evaluamos graficamente:
+
+```{r}
+ggplot (te , aes (sample=residuals ( te_anova ))) +
+  stat_qq( alpha = 0.5 , color="royalblue") +
+  xlab ("Valores te?ricos") +
+  ylab ("Valores de la muestra") +
+  geom_abline ( int=int , slope=slope , color="indianred")
+
+```
+
+
+Recordemos que los estos Tests se aplican sobre los residuos de la ANOVA
+
+## Test de Shapiro
+
+
+```{r}
+shapiro.test(te_anova$residuals) # No rechazamos normalidad
+```
+
+
+## Test de Anderson-Darlin
+
+```{r}
+library(nortest)
+ad.test(te_anova$residuals) # Tampoco rechazamos normalidad
+```
+
+
+## Test de D'Agostino
+
+```{r}
+library(moments)
+agostino.test(te_anova$residuals) # Tampoco rechazamos normalidad
+```
+
+En ningún caso rechazamos normalidad. Las conclusiones de la ANOVA resultan entonces válidas.
+
+# Transformaciones Box-Cox
+
+¿Qué debe hacerse si los residuos no son normales o resultan heterocedásticos?
+Una primera opción es transformar los datos para que se cumplan los dos supuestos.
+
+```{r}
+conejos = data.frame(dieta = c(rep("Dieta 1", 8), rep("Dieta 2", 8), rep("Dieta 3", 8)), colesterol = c(13.4, 11, 15.3, 16.7, 13.4, 20.1, 13.6, 18.3,10.4, 14.2, 20.5, 19.6, 18.5, 24.0, 23.4, 13.6,7.5, 7.2, 6.7, 7.6, 11.2, 9.6, 6.8, 8.5))
+```
+
+Usamos primero la ANOVA:
+
+```{r}
+conejos_anova = aov(colesterol ~ dieta, data = conejos)
+summary(conejos_anova)
+```
+
+Verificamos luego el cumplimiento de los supuestos:normalidad y homocedasticidad.
+
+```{r}
+shapiro.test(conejos.anova$residuals)
+
+leveneTest(colesterol~dieta, data = conejos)
+```
+
+La normalidad no se rechaza pero sí la homocedasticidad, por eso intentamos una transformación.
+
+```{r}
+library(MASS)
+bc <- boxcox(colesterol~dieta, data = conejos)
+max_bc <- bc$x[which(bc$y == max(bc$y))]
+
+```
+
+Transformamos los datos y evaluamos nuevamente ANOVA y sus supuestos:
+
+```{r}
+t_conejos_anova = aov(colesterol**max_bc ~ dieta, data = conejos)
+summary(t_conejos_anova)
+
+shapiro.test(t_conejos_anova$residuals)
+leveneTest(colesterol**max_bc~dieta, data = conejos)
+```
+
+El ANOVA rechaza otra vez la igualdad de medias, pero ahora sus conclusiones son válidas porque se cumplen los supuestos del modelo.
+
+
+# Comparaciones a posteriori
+
+Si rechazamos por ANOVA, queremos comparar las medias poblacionales de a pares, para ver cuales son distintas. Se disponen varios tests para eso, pero usamos el de Tukey:
+
+```{r}
+TukeyHSD(t_conejos_anova, conf.level = .95)
+```
+
+Como vemos, aquellos intervalos que no contienen el 0, o que su p-valor es menor a nuestro alfa, pueden considerarse medias que difieren significativamente. En este caso la media de la dieta 3 difiere de las 1 y de la 2, como se vislumbra en el boxplot:
+
+```{r}
+ggplot(conejos, aes(dieta, colesterol))+
+  geom_boxplot(mapping = aes(fill = dieta))+
+  scale_fill_brewer( palette="Pastel1")
+
+```
+
+
+# Test de Kruskal-Wallis
+
+
+¿Qué sucede si no se veri?can los supuestos del análisis de la varianza ni para los datos originales ni para los datos transformados? La alternativa en este caso son las pruebas no paramétricas. Siendo las más usadad para ANOVA,
+la prueba de la mediana y la prueba de Kruskal-Wallis, también conocida como análisis de la varianza no paramétrico. De estas dos pruebas, la más potente resulta ser la de Kruskal-Wallis siendo una generalización del test de Wilcoxon de rangos signados que ya hemos presentado.
+
+
+H0 : θ1 = θ2 = ··· = θk
+H1 : ∃(i,j): θi != θj
+
+```{r}
+alumnos <- data.frame(grupo = c(rep("A", "6"), rep("B", 6), rep("C",7)),
+                      puntajes = c(13,27,26,22,28,27
+                                   ,43,35,47,32,31,37,
+                                   33,33,33,26,44,33,54))
+ggplot (alumnos , aes (x=grupo , y=puntajes , fill = grupo)) +
+  geom_boxplot () +
+  xlab ("") +
+  scale_fill_brewer( palette="Pastel1")
+```
+
+Veamos los supuestos para hacer ANOVA:
+
+```{r}
+alumnos_anova = aov(puntajes~grupo, alumnos)
+summary(alumnos_anova) # Rechazamos H0: al menos una media difiere
+
+shapiro.test(alumnos_anova$residuals[which(alumnos$grupo=="A",)])
+shapiro.test(alumnos_anova$residuals[which(alumnos$grupo=="B",)])
+shapiro.test(alumnos_anova$residuals[which(alumnos$grupo=="C",)])
+
+
+```
+
+Como rechazamos normalidad en el grupo A, se opta por un test no paramétrico.
+
+```{r}
+library (pgirmess) 
+kruskal.test(alumnos$puntajes,alumnos$grupo)
+```
+
+Rechazamos la hipótesis de igualdad de medianas. Ahora se hace la comparación de a pares:
+
+```{r}
+kruskalmc(alumnos$puntajes,alumnos$grupo)
+```
+
+El grupo A difiere de los otros 2.
+
+
+
+
+# Test del vector de medias para 1 poblacion
+
+Se usa la distribución de Hotelling es una generalización de la distribución t-Student.
+
+H0 : µ = µ0
+H1 : µ != µ0
+
+```{r}
+library(Hotelling)
+(V = matrix(c(4.288,1.244,1.244,0.428), nrow =  2, byrow = T))
+x_prom = c(6.9,6.2)
+x_planteado = c(sqrt(50),6)
+n_observaciones = 40
+
+(estadistico = t(x_prom-x_planteado) %*% solve(V) %*% (x_prom-x_planteado) * 
+  ((n_observaciones - length(x_prom))/ length(x_prom)))
+
+pf(estadistico, length(x_prom), n_observaciones-length(x_prom), lower.tail = F)
+
+```
+
+
+Asi de chico el p-valor, no puedo sostener que el vector de medias es igual al valor planteado.
+
+
+# Test del vector de medias para 2 poblaciones
+Suponiendo que ambas poblaciones tienen distribución Normal con la misma matriz de varianzas-covarianzas, nos interesa comparar sus vectores medios para lo cual vamos a contrastar las siguientes hipótesis.
+
+H0 : µ1 = µ2
+H1 : µ1 != µ2
+
+
+```{r}
+library(readxl)
+avispas <- read_excel("avispas.xlsx")
+avispas$Especie = as.factor(avispas$Especie)
+```
+
+Exploramos los datos:
+```{r}
+ggplot(avispas, aes(Antena, Pata))+
+  geom_point(aes(color = Especie))
+
+```
+
+Evaluamos sus vectores medios:
+
+```{r}
+rbind(total = colMeans(avispas[-3])
+,aggregate(. ~ Especie, avispas, mean))
+
+```
+
+
+
+Hacemos el test de Hotteling:
+
+```{r}
+(hotelling.test(.~Especie, data = avispas))
+```
+
+Y hay evidencia para rechazar la afirmación de que los vectores medios de los grupos de avispas son iguales.
+
+
+# Analisis de perfiles
+
+Si nuestro interés es probar que los per?les son paralelos, conviene plantear las siguientes hipótesis
+
+H0 : µ11 − µ21 = µ12 − µ 2 = ··· = µ1p − µ2p
+H1 : ∃(i,j) : µ1i − µ2i != µ1j − µ2j
+
+```{r}
+iris.subset = iris[iris$Species!="virginica",-4]
+t = hotelling.test(.~Species, data = iris.subset)
+```
+
+Aqui vemos que los vectores medios no son iguales, resta probar si son paralelos. Ver en el archivo de comparacion de medias en forma multivariada.
+
+
+
+# LDA
+
+Cuando las medias de dos grupos son signi?cativamente distintas, puede ser de utilidad considerar estas variables para asignar un individuo a uno de los dos grupos.
+
+El análisis discriminante (AD) tiene por objetivo encontrar una función tal que, al aplicarla a un nuevo individuo, nos permita clasi?carlo de acuerdo con el valor que éste presenta en un conjunto de variables que denominaremos variables discriminantes y asignarlo a uno de los grupos previamente conocidos o definidos.
+
+
+Otros puntos a considerar:
+  - La ausencia de normalidad multivariante o la presencia de outlier 
+    conlleva   a problemas de estimacion
+  - No basta con que cada variable sea normal univariado, pues la distribucion     conjunta puede no ser normal pese a ello.
+  - Aunque si una ya no es univariada, seguro la distribución conjunta no es      normal multivariada.
+  - Si las matrices de covarianza son distintas se usa el análisis de             discriminante cuadrático, no este.
+  - Se usa entonces prueba M de Box o, más robusto, Levene Multivariado
+  - Los coeficientes estandarizados de la función discriminante son los que       corresponden al cálculo de la función discriminante con todas las             variables clasificadoras estandarizadas
+-   Los coeficientes estandarizados aij pueden interpretarse como indicadores     de la importancia relativa de cada una de las variables en cada función       discriminante. Si el valor abs. de grande, es importante en la f(x)           discirminante.
+-   Estos coeficientes son poco fiables si existen problemas de                   multicolinealidad entre las variables clasificadoras.
+-   Además recordar que no todos los conjuntos son linealmente separables
+
+
+Trabajamos con el dataset de avispas, cuyas vectores medios ya sabemos difieren.
+
+Primero probamos los supuestos:
+
+```{r}
+install.packages("mvnormtest")
+library(mvnormtest)
+mshapiro.test(t(avispas[,-3]))
+
+avispas.split = split(avispas, avispas$Especie)
+mshapiro.test(t(avispas.split[[1]][,-3]))
+mshapiro.test(t(avispas.split[[2]][,-3]))
+
+
+
+```
+
+No rechazo normalidad multivariada ni para el dataset en su totalidad, ni para ningun grupo.
+
+Ahora la homocedasticidad:
+
+```{r}
+library(biotools) 
+boxM(data = avispas[, 1:2], grouping = avispas$Especie)
+```
+
+Tampoco rechazo homocedasticidad, así que puedo aplicar LDA.
+
+```{r}
+library(MASS)
+(z = lda(Especie ~ Antena + Pata, avispas, method = "mle"))
+```
+
+
+Evaluación de la regla
+Vemos los coeficientes de la ecuacion discriminante, que permite, en base a un punto de corte, discriminar entre las clases. Después de construirla, interesa conocer su capacidad para discriminar.
+Resulta obvio la preferencia de una regla que no se equivoque en ningún caso, o bien, que clasifique correctamente en un 95% de los casos. Lamentablemente, esto no siempre es posible.
+
+
+Para estimar la probabilidad de clasificación correcta disponemos de las siguientes tres alternativas.
+
+
+## Clasificacion ingenua
+
+cuando se utilizan los mismos datos para construir la regla y para
+estimar la probabilidad de clasi?cación correcta. En este caso se calcula la proporción de observaciones bien clasi?cadas con la regla construida a partir de ellas mismas.
+
+```{r}
+predicciones <- predict(object = z, newdata = avispas[, -3], method = "predictive") 
+
+table(avispas$Especie, predicciones$class, dnn = c("Clase real", "Clase predicha"))
+
+training_error <- mean(avispas$Especie != predicciones$class) * 100 
+paste("training_error =", training_error, "%")
+#paste("trainig_error=", trainig_error, "%")
+```
+
+
+## Muestra de entrenamiento y de validación
+
+Se parte el conjunto de datos disponibles en dos submuestras al azar con, aproximadamente, las dos terceras partes para construir o entrenar la regla y la tercera parte restante para validarla. Con la mayor de las submuestras,
+llamada training sample o muestra de entrenamiento), se construye la regla de clasificación y con la menor de las submuestras, denominada muestra de validación, se estima la probabilidad de buena clasificación.
+
+```{r}
+set.seed(102030)
+train=sample(x = nrow(avispas), size = nrow(avispas)*.75)
+df_train=data.frame(avispas[train,])
+df_test=data.frame(avispas[-train,])
+z2=lda(Especie ~ Antena + Pata, df_train, method = "mle")
+
+z2_class = predict(z2, df_test)$class
+table(z2_class, df_test$Especie)
+mean(z2_class== df_test$Especie) # tasa de buena clasificación
+```
+
+
+## Leave one out o cross validation
+
+Se elimina la primera observación, se construye la regla sin ella y se la clasi?ca a esta observación con dicha regla. Luego se reincorpora la primera observación, se elimina la segunda y se procede de la misma forma que con la primera continuando de esta manera hasta la última observación. Finalmente,
+se estima la probabilidad de buena clasi?cación considerando la proporción de observaciones bien clasificadas de esta manera.
+
+```{r}
+z3 <- lda(Especie ~ Antena + Pata, avispas, method = "mle",CV=T) 
+
+table(z3$class,avispas$Especie)
+mean(z3$class==avispas$Especie) # tasa de buena clasificación por LOU
+```
+
+
+#QDA
+
+Cuando el supuesto de homocedasticidad no puede sostenerse, una opción es utilizar el Análisis Discriminante Cuadrático de Fisher.
+
+Generamos datos simulados:
+
+```{r}
+set.seed(1234)
+grupoA_x <- seq(from = -3, to = 4, length.out = 100)-+ rnorm(100, sd = 1)
+grupoA_y <- 6 + 0.15 * grupoA_x - 0.3 * grupoA_x^2 + rnorm(100, sd = 1)
+grupoA <- data.frame(variable_z = grupoA_x, variable_w = grupoA_y, grupo = "A")
+
+grupoB_x <- rnorm(n = 100, mean = 0.5, sd = 0.8)
+grupoB_y <- rnorm(n = 100, mean = 2, sd = 0.9)
+grupoB <- data.frame(variable_z = grupoB_x, variable_w = grupoB_y, grupo = "B")
+
+datos <- rbind(grupoA, grupoB)
+
+ggplot(datos, aes(x = variable_z, y = variable_w, col = grupo ))+
+  geom_point()+theme_minimal()
+```
+
+
+Se aprecia en este gráfico que los datos no son linealmente separables es probable que QDA ofrezca una mejor alternativa que LDA.
+
+Superponemos los histogramas de las variables z y w por grupo: se ve que si bien se superponen tienen distribuciones bien distintas sobre todo para la variable w
+
+```{r}
+#Superponemos los histogramas de las variables z y w por grupo
+library(ggpubr)
+p1 <- ggplot(data = datos, aes(x = variable_z, fill = grupo)) +
+  geom_histogram(position = "identity", alpha = 0.5)
+p2 <- ggplot(data = datos, aes(x = variable_w, fill = grupo)) +
+  geom_histogram(position = "identity", alpha = 0.5)
+ggarrange(p1, p2, nrow = 2, common.legend = TRUE, legend = "bottom")
+```
+
+
+vemos las medias en general y por grupo:
+
+```{r}
+rbind( colMeans(datos[,c(2,1)])
+,aggregate(. ~ grupo, datos, mean))
+```
+
+
+Hacemos un test de Hotteling, para diferencia de medias:
+
+```{r}
+(hotelling.test(.~grupo, data = datos))
+```
+
+Contrastamos normalidad multivariada por grupo:
+
+```{r}
+mshapiro.test(t(datos[,-3]))
+
+mshapiro.test(t(datos[datos$grupo=="A",-3]))
+mshapiro.test(t(datos[datos$grupo=="B",-3]))
+
+```
+
+No hay normalidad multivariada, pero aun así seguimos adelante. Es que QDA tiene cierta robustez frente a la falta de normalidad multivariante, pero es importante tenerlo en cuenta en la conclusión del análisis. 
+
+
+
+Analizamos homocedasticidad:
+
+```{r}
+boxM(data = datos[, 1:2], grouping = datos[, 3])
+```
+
+
+Rechazamos la H0 con lo cual vamos por un QDA.
+
+Primero lo armamos y evaluamos con LOU.
+
+```{r}
+modelo_qda <- qda(grupo ~ variable_z + variable_w, data = datos,CV=T)
+table(modelo_qda$class,datos$grupo)
+mean(modelo_qda$class!=datos$grupo) #error
+```
+
+Y luego con particion en entrenamiento y validación:
+
+```{r}
+set.seed(102030)
+train=sample(x = nrow(datos), size = nrow(datos)*.75)
+df_train=data.frame(datos[train,])
+df_test=data.frame(datos[-train,])
+qda.train=qda(grupo~ variable_z + variable_w, data = df_train) # solo con training set
+
+qda_predTest = predict(qda.train, df_test)
+qda_class = predict(qda.train, df_test)$class
+table(qda_class, df_test$grupo)
+mean(qda_class!= df_test$grupo) # tasa de buena clasificación
+```
+
+
+# Alternativas robustas
+
+Como ya hemos visto en secciones anteriores, la aplicación de la función discriminante requiere del cumplimiento del supuesto de normalidad multivariada. Sin embargo, este supuesto generalmente no se cumple y, en algunos casos, aún cumpliéndose, la función discriminante es afectada por la
+presencia de observaciones atípicas, más conocidas como outliers.
+
+Cuando el supuesto de normalidad se satisface, pero existe una notoria presencia de outliers, se puede incluir la versión robusta. 
+
+Por el contrario, cuando no se cumple el supuesto de normalidad y
+también existen observaciones atípicas, el modelo robusto ya no resulta adecuado y se debe recurrir a otras alternativas de clasificación.
+
+Probemos algunas alternativas robustas, evaluando su clasificación ingenua:
+
+```{r}
+library(rrcov)
+
+rob.mcd=QdaCov( datos$grupo~., data = datos)
+
+table(predict(rob.mcd)@classification,datos$grupo)
+mean(predict(rob.mcd)@classification!=datos$grupo) # tasa de buena clasif ingenua del discr robusto
+```
+
+Otra:
+
+```{r}
+rob.sde=QdaCov(datos$grupo~., data = datos, method="sde")
+
+table(predict(rob.sde)@classification,datos$grupo)
+
+mean(predict(rob.sde)@classification!=datos$grupo) # tasa de buena clasif ingenua del discr robusto
+
+```
+
+
+Otra:
+
+```{r}
+rob.M=QdaCov(datos$grupo~., data = datos, method="M")
+
+table(predict(rob.M)@classification,datos$grupo)
+
+mean(predict(rob.M)@classification!=datos$grupo) # tasa de buena clasif ingenua del discr robusto
+```
+
+
+Y una última:
+
+```{r}
+roblog=QdaCov(datos$grupo~., data = datos, method=CovControlOgk())
+
+table(predict(roblog)@classification,datos$grupo)
+
+mean(predict(roblog)@classification!=datos$grupo) # tasa de buena clasificaci?n ingenua del discr robusto
+```
+
+
+# Clustering
+
+En los métodos no supervisado el algoritmo clasi?cador requiere simplemente de la información observada del grupo de estudio y ciertos parámetros que limiten el número de clases.
+
+El análisis de clusters o conglomerados es una técnica de reducción de datos que pretende la subdivisión de la población en subgrupos más manejables. El mismo es un método propio del análisis exploratorio de datos, que permite descubrir asociaciones y estructuras en los datos que no son evidentes pero que pueden ser útiles una vez que se han detectado.
+
+Para agrupar objetos, casos o variables, es necesario seguir cierto algoritmo. Los algoritmos o métodos de agrupamiento permiten identificar clases existentes en relación a un conjunto dado de atributos o características.
+
+El agrupamiento logrado dependerá de lo siguiente:
+  - El algoritmo de agrupamiento o división utilizado
+  - La distancia seleccionada
+  - La cantidad de grupos deseados (de existir esta información)
+  - Las variables utilizadas para el método y las disponibles en la base
+  - La condición de estandarización o no de las variables seleccionadas
+  
+  
+  
+## Clustering jerárquico
+
+
+Los algoritmos jerárquicos producen agrupamientos de tal manera que un conglomerado puede estar completamente contenido dentro de otro, pero no está permitido otro tipo de superposición entre ellos.
+
+Los resultados de agrupamientos jerárquicos se muestran en un diagramas de árboles en dos dimensiones, llamado dendrograma, en el que se pueden observar las uniones y/o divisiones que se van realizando en cada nivel del proceso de construcción de conglomerados; es decir, el historial del método.
+
+El dendograma es una representación grá?ca en forma de árbol que resume el proceso de agrupación en un análisis de clusters y se utiliza para representar la clasificación jerárquica. Los objetos similares se conectan mediante enlaces cuya posición en el diagrama está determinada por el nivel
+de similitud o disimilitud entre los objetos. Las ramas en el árbol representan los conglomerados, y se unen en un nodo cuya posición a lo largo del eje de distancias indica el nivel en el cual la fusión ocurre.
+
+Es importante resaltar que los distintos algoritmos dependen del método utilizado en el paso para calcular la distancia entre clusters.
+
+
+Veamos un ejemplo:
+
+```{r}
+data(USArrests) 
+datos <- scale(USArrests)  
+head(datos)
+```
+
+Calculamos la matriz de distancias euclideas:
+
+```{r}
+mat_dist <- dist(x = datos, method = "euclidean")
+glimpse(mat_dist)
+# Distancia individuo con individuo 
+```
+
+
+O podriamos usar otra como Manhattan:
+
+```{r}
+mat_dist_man <- dist(x = datos, method = "manhattan")
+glimpse(mat_dist)
+```
+
+También podemos construir el objeto de matriz de distancia si viene dado:
+
+```{r}
+(m = matrix(c(0,5,1,5,0,8,1,8,0), nrow = 3))
+as.dist(m)
+```
+
+
+Veamos ahora los dendogramas con diferentes medidas de distancias entre clusters:
+
+```{r}
+hc_complete <- hclust(d = mat_dist, method = "complete") # Distancias entre clusters
+hc_average <- hclust(d = mat_dist, method = "average")
+hc_single <- hclust(d = mat_dist, method = "single")
+hc_ward <- hclust(d = mat_dist, method = "ward.D2")
+```
+
+En el caso de comparación de varios agrupamientos alternativos, suele utilizarse el coeficiente de correlación cofenética, el cual indica la correlación de las distancias de?nidas por la métrica de árbol binario con las distancias originales entre objetos. Luego, se espera que el agrupamiento
+con mayor coeficiente sea el que mejor describe el agrupamiento natural de los datos.
+
+```{r}
+cor(x = mat_dist, cophenetic(hc_complete)) # Cuanto mas cercano a 1 mejor es la clusterizacion
+cor(x = mat_dist, cophenetic(hc_average))
+cor(x = mat_dist, cophenetic(hc_single))
+cor(x = mat_dist, cophenetic(hc_ward))
+```
+
+El mejor aquí parece ser usar la distancia promedio entre clusters.
+
+
+# Veamos ahora los dendogramas, partiendolos por una cantidad k de clusters:
+
+```{r}
+library(factoextra)
+datos2 <- USArrests 
+set.seed(101) 
+
+hc_avg <- datos2 %>% scale() %>% dist(method = "euclidean") %>% 
+  hclust(method = "average") # Todo en uno usando dplyr
+
+fviz_dend(x = hc_avg, k = 5, cex = .5, horiz = F, repel = T, rect =T)
+```
+
+Otra forma de representarlos es:
+
+```{r}
+fviz_cluster(object = list(data = USArrests, cluster = cutree(hc_average, k = 5)), ellipse.type = "convex", repel = TRUE, show.clust.cent = FALSE) + 
+  theme_grey()
+```
+
+
+# K-Means
+
+entro de este tipo de métodos, el más popular es el algoritmo denominado k-medias o, en inglés,k-means.
+
+¿En qué consiste? Es importante destacar que un dato de entrada es el número de conglomerados deseados que denotaremos por k.
+
+¿Cómo elegir la medida de proximidad o distancia?
+La elección de esta medida depende en primera instancia de la naturaleza de los datos. Bajo ciertas circunstancias conviene discretizar el análisis de alguna variable continua o bien categorizarla.
+
+Hay que tener en cuenta que la selección de la distancia y de la técnica, pueden cambiar la disposición de los clusters.
+
+¿Cómo tratar los valores perdidos o missing data? La forma más simple, aunque no siempre implica ser la mejor, es utilizar únicamente los registros completos. Sin embargo, esta decisión puede reducir drásticamente la información disponible para el estudio.
+
+
+Veamos un ejemplo, primero determinando la cantidad de k, y luego haciendo el clustering:
+
+```{r}
+library(factoextra) 
+fviz_nbclust(x = datos, FUNcluster = kmeans, method = "wss", 
+             diss = dist(datos, method = "euclidean"))
+# En 4 deja de decaer la suma de cuadrados dentro de cada grupo considerablemente
+
+set.seed(123) 
+km_clusters <- kmeans(x = datos, centers = 4, nstart = 25)
+split(rownames(datos),km_clusters$cluster) # Obtengo los clusters
+
+fviz_cluster(object = km_clusters, data = datos, show.clust.cent = TRUE, ellipse.type = "euclid", star.plot = TRUE, repel = TRUE) + 
+  theme_grey() + 
+  theme(legend.position = "none") # Los grafico con componentes ppales
+```
+
