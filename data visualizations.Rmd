@@ -20,7 +20,7 @@ library(ggplot2)
 
 Let’s use our first graph to answer a question: Do cars with big engines use more fuel than cars with small engines? You probably already have an answer, but try to make your answer precise. What does the relationship between engine size and fuel efficiency look like? Is it positive? Negative? Linear? Nonlinear?
 
-```{r}
+```{r glimpse dataset}
 glimpse(mpg)
 ```
 
@@ -39,7 +39,7 @@ ggplot(data = <DATA>) +
   
 The ggplot alone does nothing at all.
 
-```{r}
+```{r empty ggplot canvas}
 ggplot(data = mpg)
 ```
 
@@ -71,7 +71,7 @@ Or we could have mapped class to the alpha aesthetic, which controls the transpa
 points, or to the shape aesthetic, which controls the shape of the points.
 
 
-```{r}
+```{r alpha & shape aes}
 # Left
 ggplot(data = mpg) + 
   geom_point(mapping = aes(x = displ, y = hwy, alpha = class))
@@ -90,7 +90,7 @@ Once you map an aesthetic, ggplot2 takes care of the rest. It selects a reasonab
 ## Set aestethic to manual value
 You can also set the aesthetic properties of your geom manually. For example, we can make all of the points in our plot blue:
 
-```{r}
+```{r manual aes value}
 ggplot(data = mpg) + 
   geom_point(mapping = aes(x = displ, y = hwy), color = "blue")
 ```
@@ -101,7 +101,7 @@ Here, the color doesn’t convey information about a variable, but only changes 
 * The shape of a point as a number.
 
 
-```{r}
+```{r stroke aes}
 ggplot(data = mpg) + 
   geom_point(mapping = aes(x = displ, y = hwy, stroke = displ))
 ```
@@ -246,7 +246,7 @@ ggplot2 provides over 20 stats for you to use. Each stat is a function, so you c
 
 Note what happens if you map the fill aesthetic to another variable, like clarity: the bars are automatically stacked. Each colored rectangle represents a combination of cut and clarity
 
-```{r}
+```{r stacked bar chart}
 ggplot(data = diamonds) + 
   geom_bar(mapping = aes(x = cut, fill = clarity))
 ```
@@ -270,7 +270,7 @@ ggplot(data = diamonds) +
 
 * position = "dodge" places overlapping objects directly beside one another. This makes it easier to compare individual values.
 
-```{r}
+```{r dodge position}
 ggplot(data = diamonds) + 
   geom_bar(mapping = aes(x = cut, fill = clarity), position = "dodge")
 ```
@@ -299,7 +299,7 @@ ggplot(data = mpg, mapping = aes(x = class, y = hwy)) +
 
 * coord_quickmap() sets the aspect ratio correctly for maps. This is very important if you’re plotting spatial data with ggplot2 (which unfortunately we don’t have the space to cover in this book).
 
-```{r}
+```{r coord map}
 world <- map_data("world")
 
 ggplot(world, aes(long, lat, group = group)) +
@@ -329,7 +329,7 @@ bar + coord_polar()
 
 Use coord_fixed() to set the desired aspect ratio and geom_abline() to add horizontal, vertical or diagonal (slope & intercept based) lines.
  
-```{r}
+```{r additional settings}
 ggplot(data = mpg, mapping = aes(x = cty, y = hwy)) +
   geom_point() + 
   geom_abline() +
@@ -362,3 +362,10 @@ Next, you could choose a geometric object to represent each observation in the t
 You’d then select a coordinate system to place the geoms into. You’d use the location of the objects (which is itself an aesthetic property) to display the values of the x and y variables. At that point, you would have a complete graph, but you could further adjust the positions of the geoms within the coordinate system (a position adjustment) or split the graph into subplots (faceting). You could also extend the plot by adding one or more additional layers, where each additional layer uses a dataset, a geom, a set of mappings, a stat, and a position adjustment.
 
 You could use this method to build any plot that you imagine. In other words, you can use the code template that you’ve learned in this chapter to build hundreds of thousands of unique plots.
+
+# Getting examples
+
+```{r getting examples}
+example("geom_polygon")
+```
+
