@@ -1,0 +1,992 @@
+---
+title: "Learning Linear Algebra"
+author: "Hernán Estrin"
+date: "August 1, 2019"
+output: html_document
+---
+
+# Introducción
+
+El álgebra lineal es una rama de las matemáticas que se trata sobre de todo de vectores y matrices. 
+
+Un vector es una lista ordenada de valores, que normalmente se ordenan en forma de columna, pero también pueden presentarse a lo largo, en una fila. Se representan en letras mínusculas como a, b... y sus elementos como x1, x2, etc. 
+
+
+Una matriz es como una hoja de cálculo de números. Se define como de m filas y n columnas, es decir, de tamaño m x n. Se suelen representar con letras mayúsculas, tales como A, B... y sus elementos como x11, x12, etc. 
+
+Ambos tienen una interpretación algebraica pero también tienen una geométrico, que permite ver sus mecanismos en el espacio.
+
+## Notación
+Las letras minúsculas del medio del alfabeto, tales como i, j, k, se suelen utilizar para representar índices dummy, mientras que m, n, p, se usan para representar enteros fijos. Por ejemplo: for i = 1, 2,...,n.
+
+Las letras mayúsculas H, I y J se reservar para ciertas matrices especiales.
+
+La traspuesta de una matriz X se indica como X'. También se puede encontrar como Xt.
+
+La inversa de una matriz (no singular) X se indica como X^-1.
+
+# Funciones definidas
+
+Acá colocó todas las funciones que se van definiendo para limpiar el código de los ejemplos:
+
+```{r funciones}
+rad2deg <- function(rad) {(rad * 180) / (pi)}
+deg2rad <- function(deg) {(deg * pi) / (180)}
+
+magn_vector <- function(vector){
+  if (class(vector) == "list"){
+    vector <- unlist(vector)
+  }
+  magn = as.vector(sqrt(vector%*%vector))
+  names(magn) <- "magnitude"
+  return (magn)
+}
+
+
+dir_vector <- function(vector){
+  if (class(vector) == "list"){
+    vector <- unlist(vector)
+  }
+  if (vector[1] >= 0 & vector[2] >=0){
+  dir = rad2deg(atan(vector[2]/vector[1]))
+  } else if (vector[1] <= 0){
+  dir = 180 + rad2deg(atan(vector[2]/vector[1]))
+  } else if (vector[1] >= 0 & vector[2] <=0){
+  dir = 360 + rad2deg(atan(vector[2]/vector[1]))
+  }
+  names(dir) <- "direction"
+  return(dir)
+}
+
+
+polar2cart <- function(angle, magnitude){
+    if (class(angle) == "list"){
+    angle <- angle$angle_deg
+    magnitude <- angle$magnitude
+  }
+  x <- magnitude*cos(deg2rad(angle))
+  y <- magnitude*sin(deg2rad(angle))
+  list( x = x, y = y)
+}
+
+cart2polar <- function(x, y=0){
+    if (class(x) == "list"){
+    x <- unlist(x)
+  }
+  angle <- dir_vector(c(x,y))
+  magn <- magn_vector(c(x,y))
+  list(magnitude = magn, angle_deg = angle, angle_rad = deg2rad(angle))
+}
+
+dibujar_vector <- function(vector, color = "black"){
+    if (class(vector) == "list"){
+    vector <- unlist(vector)
+  }
+  arrows(0,0,vector[1], vector[2], col = color)
+}
+
+
+vector_info <- function(vector) {
+  list(
+    x = vector[1],
+    y = vector[2],
+    magnitude = as.vector(magn_vector(vector)),
+    direction_deg = as.vector(dir_vector(vector)),
+    direction_rad = deg2rad(as.vector(dir_vector(vector))),
+    length = length(vector),
+    sin = sin(deg2rad(as.vector(
+      dir_vector(vector)
+    ))),
+    cos = cos(deg2rad(as.vector(
+      dir_vector(vector)
+    ))),
+    tan = tan(deg2rad(as.vector(
+      dir_vector(vector)
+    )))
+  )
+}
+
+```
+
+
+# Vectores
+
+Un vector de orden (o dimensión) p, es una columna ordenada de p valores (o expresiones/funciones). Técnicamente podemos decir que es un elemento de un espacio euclideo p-dimensional. Los números xi son sus componentes (O elementos), y por defecto se ordena en forma de columna, con lo cual es un vector-columna. Su traspuesta, x' es un vector-fila.
+
+Geometricamente un vector es una linea recta con determinado tamaño (o magnitud) y dirección en un espacio p-dimensional, cuya distancia entre su comienzo y su final queda descrito por sus elementos. En general no importa donde comience el vector, por lo que existen infinitos vectores en el plano con igual magnitud y dirección. Sin embargo, nos interesan particularmente los que empiezan en el origen de coordenadas, conocida como posición estándar, y por lo tanto la posición del vector en el espacio es igual a sus coordenadas (pues empieza en el 0). Aquí es posible notar la diferencia entre un vector y una coordenada, pues si bien en este caso particular coincide, los vectores cuya cola se sitúe en otro punto, no tendrán la misma coordenada, representada por su punta. 
+
+## Suma y resta
+La suma y resta de vectores del mismo orden opera elemento a elemento y no es posible sumar o resta vectores que no conforman, esto es, de diferente orden o dimensionalidad y el resultado va a ser del mismo orden de los operandos.
+
+```{r suma y resta de vectores}
+a <- 1:3
+b <- c(4, 5, 6)
+a + b
+b - a
+```
+
+La suma es conmutativa y asociativa.
+
+```{r conmutativa y asociativa}
+c <- 6:8
+a + c
+c + a
+
+(a + b) + c
+a + (b + c)
+```
+
+Geometricamente, sumar dos vectores corresponde a situar la cola del primero sobre la cabeza del segundo, para luego trazar la linea que va del origen a la nueva posición de la cabeza del segundo vector.
+
+```{r}
+a <- c(2, 1)
+b <- c(1, 2)
+vecs <- data.frame(vname=c("a","b","a+b","transa", "transb"), 
+                   x0=c(0,0,0,1,2),
+                   y0=c(0,0,0,2,1), 
+                   x1=c(2,1,3,3,3) ,
+                   y1=c(1,2,3,3,3), 
+                   col=1:5)
+a
+b
+a + b
+plot(NA, xlim=c(0,5), ylim=c(0,5), xlab="X", ylab="Y", lwd=1.5, lty = 3)
+ with(vecs, mapply("arrows", x0, y0, x1, y1,col=col,lwd=2, lty = 1) )
+```
+ 
+ La resta, por su parte, puede ser vista como la suma de vectores con el segundo multiplicado por -1, es decir, dado vuelta.
+ 
+ 
+```{r}
+a <- c(2, 1)
+b <- c(1, 2)
+vecs <- data.frame(vname=c("a","b","a-b","transa", "transb"), 
+                   x0=c(0,0,0,2,-1),
+                   y0=c(0,0,0,1,-2), 
+                   x1=c(2,-1,1,1,1) ,
+                   y1=c(1,-2,-1,-1,-1), 
+                   col=1:5)
+a
+b
+a + b
+plot(NA, xlim=c(-2,3), ylim=c(-3,2), xlab="X", ylab="Y", lwd=1.5, lty = 3)
+ with(vecs, mapply("arrows", x0, y0, x1, y1,col=col,lwd=2, lty = 1),
+      labels = vecs$vname)
+```
+
+## Multiplicación por escalar
+
+La multiplicación escalar de un vector por un escalar también es elemento a elemento y también dara un vector del mismo orden. Un escalar es meramente un número, que escala o hace más grande o chico la magnitud del vector sin cambiar su dirección (aunque si es negativo en realidad la invierte) y su suelen indicar con letras latinas. 
+
+```{r multiplicacion escalar}
+a * 3
+b * -2
+
+a <- c(2, 1)
+vecs <- data.frame(vname=c("a","2a","4a","-a", "-2a"), 
+                   x0=c(0,0,0,0,0),
+                   y0=c(0,0,0,0,0), 
+                   x1=c(a[1],2*a[1],4*a[1],-a[1],-2*a[1]) ,
+                   y1=c(a[2],2*a[2],4*a[2],-a[2],-2*a[2]) , 
+                   col=1:5)
+
+plot(NA, xlim=c(-5,10), ylim=c(-5,5), xlab="X", ylab="Y", lwd=1.5, lty = 3)
+ with(vecs, mapply("arrows", x0, y0, x1, y1,col=col,lwd=2, lty = 1),
+      labels = vecs$vname)
+```
+
+
+## Similitud
+
+Dos vectores son similares si son del mismo orden y todos sus pares de elementos son iguales. 
+
+* Un vector x con todos sus elementos 0, se escrite x = 0. 
+* Un vector con su i-ésimo elemento 1 y todos los demas en 0 se escribe como e~i y se conoce como vector unitario.
+* Un vector x con todos sus elementos 1, se conoce como 1~p. Asi, la suma de todos los vectores e~i correspondientes da 1~p y se conoce como el vector suma.
+
+```{r vectores especiales}
+e1 = c(1, 0, 0)
+e2 = c(0, 1, 0)
+e3 = c(0, 0, 1)
+e1 + e2 + e3
+```
+
+## Multiplicación de vectores
+
+Existen 4 maneras de multiplicar vectores: Hadamark, Cross-product, Outer-Product y Dot Product; veamos este último . Se conoce al producto escalar (o punto) como la suma de los productos de sus elementos tomados de a pares y se suele anotar como a'b, aTb o a·b.
+
+```{r producto escalar}
+a %*% b # 1 * 4 + 2 * 5 + 3 * 6
+```
+
+Como vemos, el producto escalar nos devuelve un número, que indica la relación entre los vectores. 
+
+### Magnitud y dirección
+
+La magnitud o norma de un vector se calcula como la raiz cuadrada del producto escalar de un vector consigo mismo y se escribe como ||a||.
+
+```{r magnitud}
+c <- c(3,4)
+sqrt(c%*%c)
+```
+
+En 2 dimensiones esto se ve como la hipotenusa de un triangulo rectangulo cuyos catetos son los elementos x e y del vector en cuestión.
+
+La dirección del vector, por su parte, puede pensarse como el ángulo en el origen de este triángulo rectángulo. Si hacemos la tangente inversa de sus catetos, obtenemos el ángulo (en radianes), pero también podemos usar el seno o coseno inverso con la norma (hipotenusa)
+
+```{r}
+magn_dir(c)
+
+d <- polar2cart(30, magn_vector(c))
+magn_dir(d)
+e <- polar2cart(60, magn_vector(c))
+magn_dir(e)
+f <- polar2cart(15, magn_vector(c))
+magn_dir(f)
+g <- polar2cart(75, magn_vector(c))
+magn_dir(g)
+h <- polar2cart(88, magn_vector(c))
+magn_dir(h)
+i <- polar2cart(7, magn_vector(c))
+magn_dir(i)
+
+plot(xlim = c(0,6), ylim = c(0, 5), 0, 0)
+dibujar_vector(c)
+dibujar_vector(d)
+dibujar_vector(e)
+dibujar_vector(f)
+dibujar_vector(g)
+dibujar_vector(h)
+dibujar_vector(i)
+```
+
+### Producto escalar
+El producto escalar entre dos vectores puede ahora pensarse como la multiplicación del largo de los vectores por el coseno del ángulo que se forma entre ellos.
+
+```{r}
+as.vector(magn_vector(a) * magn_vector(b) * cos(deg2rad(abs(dir_vector(a) - dir_vector(b)))))
+```
+
+Podemos pensar que multiplicar a uno de los vectores por el coseno del ángulo que forman es proyectarlo en la dirección del otro, lo cual altera su magnitud, y asi si se los puede multiplicar.
+
+```{r}
+magn_vector(b) * cos(deg2rad(abs(dir_vector(a) - dir_vector(b))))
+magn_vector(b)
+
+plot(xlim = c(0,3), ylim = c(0, 3), 0, 0)
+dibujar_vector(a)
+dibujar_vector(b)
+dibujar_vector(b*cos(deg2rad(abs(dir_vector(a) - dir_vector(b)))), color = "red")
+```
+
+Cuanto más chico el ángulo, menor será la magnitud perdida en la proyección. En los casos extremos, si tienen la misma dirección, el producto escalar es la multiplicación de las magnitudes.
+ 
+ 
+```{r producto escalar igual direccion}
+a <- polar2cart(65, 4)
+b <- polar2cart(65, 2)
+unlist(a)%*%unlist(b) # 4 * 2 magnitud pues el coseno es 1
+cos(vector_info(a)$direction_rad - vector_info(b)$direction_rad)
+
+```
+ 
+```{r producto escalar vectores lejanos}
+a <- polar2cart(85, 3)
+b <- polar2cart(15, 2)
+
+plot(xlim = c(0,3), ylim = c(0, 3), 0, 0)
+dibujar_vector(a)
+dibujar_vector(b)
+
+unlist(a)%*%unlist(b) # El producto escalar resulta mucho menor a la multiplicacion de magnitudes. El coseno resulta:
+cos(vector_info(a)$direction_rad - vector_info(b)$direction_rad)
+```
+
+En otro extremo, los vectores ortogonales, es decir, que forman un ángulo de 90 grados, tienen un producto escalar igual a 0, sin importar sus magnitudes, pues su coseno es 0.
+
+```{r producto escalar nulo}
+a <- polar2cart(90+35, 3)
+b <- polar2cart(35, 2)
+
+plot(xlim = c(-3,3), ylim = c(0, 3), 0, 0)
+dibujar_vector(a)
+dibujar_vector(b)
+
+
+round(unlist(a)%*%unlist(b), 6)
+round(cos(vector_info(a)$direction_rad - vector_info(b)$direction_rad),6)
+```
+
+Y si el ángulo es mayor a 90, entonces el coseno es negativo y por tanto también lo es el producto escalar. Esto es, la reflexión cae sobre el lado contrario del otro vector. Cuanto más grande el ángulo, de 90 a 180, más grande será el valor absoluto.
+
+```{r vector con angulo mayor a 90}
+a <- polar2cart(170, 3)
+b <- polar2cart(35, 2)
+
+plot(xlim = c(-3,3), ylim = c(0, 3), 0, 0)
+dibujar_vector(a)
+dibujar_vector(b)
+
+dir_vector(a)
+
+round(unlist(a)%*%unlist(b), 6)
+vector_info(a)$direction_deg - vector_info(b)$direction_deg
+round(cos(vector_info(a)$direction_rad - vector_info(b)$direction_rad),6)
+```
+
+Y de ser un ángulo de 180, el producto escalar es la multiplicación de las magnitudes con signo alterado.
+
+
+```{r angulo de 180 entre vectores}
+a <- polar2cart(180+50, 3)
+b <- polar2cart(50, 2)
+
+plot(xlim = c(-3,3), ylim = c(-3, 3), 0, 0)
+dibujar_vector(a)
+dibujar_vector(b)
+
+dir_vector(a)
+dir_vector(b)
+
+round(unlist(a)%*%unlist(b), 6)
+vector_info(a)$direction_deg - vector_info(b)$direction_deg
+round(cos(vector_info(a)$direction_rad - vector_info(b)$direction_rad),6)
+```
+
+
+### Producto Hadamark
+
+Es la multiplicación de elementos de a pares. El resultado será del mismo tamaño de los vectores que se operan.
+
+```{r hadamark product}
+c(3,2) * c(2,4)
+```
+
+### Producto externo
+
+Mientras que el producto escalar es un escalar, independientemente del tamaño de los vectores de igual tamaño sobre los que se opera, y que se escribe como a T b, el producto externo se escribe como a bT y no es más que la multiplicación de todos los elementos de dos vectores que pueden ser de diferente tamaño, formando una suerte de tabla.
+
+```{r outer product} 
+a <- c(3,2,5) # vector columna
+b <- c(2,4,6,1) # vector fila *3, *2 y *5
+
+a %*% t(b) # or outer(a, b)
+```
+
+### Producto cruzado
+
+Este solo está definido para dos vectores de 3 dimensiones, y su resultado es otro vector en 3D que resulta ortogonal a los operandos. Su magnitud es igual al area del paralelograma con base formada por los vectores y altura del nuevo vector.
+
+Para calcularlo se hace la magnitud de a, por la magnitud de b, por el seno del angulo que forman entre ellos, por el vector unitario que es ortogonal a ambos vectores.
+
+Otra formula para calcularlo es: cx = ay * bz - az * by, cy = az * bx - ax * bz y cz = ax * by - ay * bx.
+
+```{r cross product}
+require(pracma)
+
+a <- c(2,3,4)
+b <- c(5,6,7)
+
+
+
+sqrt(a%*%a)*sqrt(b%*%b)
+cross(a, b)
+
+
+(cx = a[2] * b[3] - a[3] * b[2])
+(cy = a[3] * b[1] - a[1] * b[3])
+(cz = a[1] * b[2] - a[2] * b[1])
+
+
+```
+
+
+## Vectores unitarios
+
+Como sabemos, los vectores que apuntan en la misma dirección pero que difiere en magnitud, pueden ser escalados para igualarse. Un caso especial de ello es hacer que el vector tengo magnitud 1. Para ello, no necesitamos más que dividir cada componente del vector por su magnitud:
+
+```{r}
+vector <- polar2cart(angle = 68, magnitude = 10)
+
+unlist(vector)
+
+(unit_vector = unlist(vector) / magn_vector(vector))
+
+magn_vector(unit_vector)
+
+dir_vector(vector) == dir_vector(unit_vector)
+
+```
+
+## Dimensionalidad y campos
+
+En álgebra lineal la cantidad de elementos de un vector se corresponde con su dimensionalidad. La idea es que cada dimensión provee información particular acerca del vector en cuestión. 
+
+Geométricamente un vector de 1D representa una linea, uno de 2D un plano y uno 3D un plano. 
+
+Los valores de los vectores para cada dimensión corresponden a la ubicación del mismo en cada uno de los ejes representados.
+
+Por su parte, los campos son conjuntos, generalmente numéricos, en los cuales las operaciones aritméticas básicas son válidas. Aquí nos ocuparemos solo del campo de los reales.
+
+Es común indicar la dimensionalidad como un superscript del campo. Así R2 refiere a números reales en un espacio de 2 dimensiones. RN o RM se usa para nombrar dimensionalidades en general. Asimismo los vectores ∈ (es un miembro de) un campo R.
+
+
+## Subespacio
+
+Un subespacio es el conjunto de vectores que se puede crear como combinación lineal de 1 o más vectores y que contiene al vector 0. 
+
+Si tomamos un solo vector, por ejemplo en un espacio 2d, cualquier otro vector que pueda crearse como un escalamiento del mismo, se dice que está dentro del subespacio del vector original. Así, creamos un subespacio de 1D dentro del espacio 2D.
+
+Un vector solo es un espacio 3d crea un espacio unidimensional allí. Si tomamos de a 2 vectores en este mismo espacio, el subespacio que estos forman a través de su combinación lineal, si es que no pertenecen al mismo espacio unidimensional, esto es, uno no es multiplo del otro, será un plano. Se trata pues de uno de los infinitos planos o subespacios de 2d que se pueden crear allí, con la particularidad que todos se intersectan necesariamente en el origen (en realidad en una linea completa que lo contiene).
+
+Al espacio en general lo llamaremos espacio ambiental, dentro del cual existe una infinita cantidad de subespacios de menor dimensionalidad. Esto es, en un espacio ambiente de 3d, se pueden crear un solo espacio de 0d (el origen), infinitas lineas de 1d e infinitos planos de 2d.
+
+Una aclaración válida es que el tener más vectores en un subespacio no necesariamente nos arrojará un subespacio de mayor dimensionalidad. Por ejemplo 2 vectores en un plano 3d no siempre formarán un plano como subespacio debido a que los mismos pueden tener la misma dirección, esto es, yacer en el mismo espacio unidimensional. En otros términos, para que formen un plano los mismos deben ser linealmente independientes, lo cual significa que no sean versiones escaladas de sí mismo.
+
+Si respetamos la independencia entre vectores, con cada uno que sumamos podremos crear cada vez subespacios más grande dentro del espacio ambiente, hasta contar con la misma cantidad de vectores que dimensiones el ambiente, caso en el cual ya podemos abarcarlo entero.
+
+## Subconjuntos
+
+A diferencia de los subespacios, un subconjunto es un conjunto de puntos dentro de un espacio que no necesariamente incluyen al origen ni deben ser necesariamente combinación lineal de vectores. 
+
+Por ejemplo en un plano 2d, los puntos en que x >= 0 e y >= 0 formar un subconjutno. Pese a que un vector de coordenadas positivas en este plano forma parte de este subconjunto, el subespacio unidimensional que forma no pertenece entero al subespacio, pues en la medida que al escalarlo alguna de sus coordenadas resulten negativos, ya no pertenecerá al subconjunto definido. Otro ejemplo sería el subconjunto x**2 + y**2 = 1.
+
+Sin embargo, si definimos un subespacio que sea y = 4x para todo x, en ese caso particular el subconjunto es también un subespacio. Aunque si lo modificamos ligeramente, como y = 4x + 1, deja de ser un subespacio en términos estrictos pues ya no pasa por el origen.
+
+En general pues, para que un subconjunto sea también un subespacio debe contener al origen y debe poder escribirse como una combinación lineal de vectores para todo x.
+
+## Span
+
+El span es algo parecido a un subespacio pero no es exactamente lo mismo. El span de uno o más vectores es el conjunto de todos los vectores que se pueden formar como combinación lineal de los mismos.
+
+Así una pregunta frecuente es si un vector está en el span de otro/s vector/es. Esto es si se puede obtener como una combinación lineal del mismo o de los mismos. En un espacio 3d, si partimos de 2 vectores, esto significa si el vector evaluado pertenece al plano definido por los vectores (independientes) originales. 
+En uno de 2d, partiendo de 1 único vector, otro estará en el span del mismo si es linealmente dependiente, esto es, si puede ser expresado como un múltiplo del original. Si en este mismo espacio 2d, partimos de 2 vectores, si ambos no son linealmente dependientes, entonces su span será el espacio ambiente. Eso significa que cualquier punto de R2 puede ser expresado como una combinación lineal de 2 vectores linealmente independientes. De lo que se trata únicamente es de averiguar los pesos del escalamiento de cada uno para alcanzar el punto deseado. Si agregamos ahora un tercer vector, el span no se modificará, pues este tercero (o cualquier otro) ya podía ser expresado como combinación lineal de los 2 primeros.
+
+Si el span de 2 vectores independientes en un plano 2d es necesariamente el espacio entero, entonces quiere decir que cualquier otro punto puede expresarse como combinación lineal de infinitos pares de vectores. Las coordenadas de un punto no son más que la expresión de un punto en términos de 2 vectores base particulares, conocidos como vectores base, pero que podrían ser expresados en forma diferente si usaramos otra base.
+
+
+## Independencia lineal
+
+La definición formal de dependencia lineal se relaciona con la posibilidad de que un conjunto de vectores combinados linealmente puedan formar el vector 0, con alguno de los escalares diferentes de cero (solución trivial).
+
+Esto implica que cualquiera de todos los vectores linealmente dependientes puede ser expresado como combinación lineal de los restantes.
+
+Podemos decir, en general, que un conjunto de M vectores es independiente si cada vector apunta a una dimensión geométrica que no es posible alcanzar con una combinación lineal de los restantes vectores.
+
+De lo expresado anteriormente, podemos deducir dos propiedades respecto a la cantidad máxima de vectores independientes en un espacio R N.
+
+* Cualquier conjunto de M vectores donde M > N son linealmente dependientes.
+* Cualquier conjunto M de vectores donde M <= a N pueden ser linealmente independientes.
+
+Esto es, si tenemos más vectores que dimensiones entonces sí o sí estos serán linealmente dependientes, pero si el número es igual o menor a la cantidad de dimensiones entonces es posible que los mismos sean independientes, siempre que cada uno apunte en una dirección distinta. Una vez que se cuenta con tantos vectores independientes como dimensiones, entonces ya necesariamente al agregar un vector más, el conjunto se transformará en linealmente dependiente, pues no se puede alcanzar más span que el del espacio ambiente.
+
+Para evaluar si un conjunto de M vectores en un espacio N-dimensional con M<=N se puede computar el Rango de la matriz que forman, tema que se verá más adelante.
+
+## Bases
+
+Las bases son aquellos vectores utilizados como guía para formar todos los demás puntos de un (sub)espacio a partir de una combinación lineal única de los mismos. Para que un conjunto de vectores pueda ser considerado como tal deben ser linealmente independientes y además su span debe ser el (sub)espacio entero, para lo cual se necesita tanta cantidad de vectores base como dimensiones se quieran representar.
+
+En otras palabras, para un espacio 3d se necesitarán 3 vectores linealmente independientes, pero puede haber un subespacio 2d embebido dentro, para la representación del cuál solo se necesitan 2 vectores que pertenezcan al mismo y sean linealmente independientes. En forma similar, un espacio unidimensional, embebido o no en otro más grande, puede utilizar cualquier vector que pertenezca al mismo como base (al no haber más de 1 la independencia es redundante)
+
+Las bases más comunes debido a su simplicidad son los vectores base de los ejes cartesianos, que contienen solo 0s y 1s, tienen una magnitud de 1 y son ortogonales entre sí. Por ejemplo en R2 son (1, 0) y (0, 1).
+
+Decimos que los vectores base son como reglas, porque a partir de los mismos se miden distancias y definen puntos como coordenadas. Estamos tan acostumbrados a usar los ejes cartesianos estándar que ni lo notamos, y de hecho describimos siempre a los vectores como coordenadas de los mismos, pero cualquier punto puede ser igualmente expresado con una base diferente. Así, el punto que normalmente expresamos como (4, 4) en términos de los vectores estándar, podría ser expresado como (2,0) si nuestros vectores base fueran (2,2) y (0, 1). Para denotar este cambio de base el vector se escribe con un subindice que indica los vectores base utilizados.
+
+
+¿Por qué no podemos tener más vectores base que dimensiones? Esto se debe a que de hacerlo tendríamos más de una combinación lineal de los vectores base para alcanzar un punto, y por lo tanto significaría que el mismo podría tener más de 1 coordenada diferente. Por ejemplo, si en R2 tenemos 3 vectores base, más allá de violar la independencia, el problema es que podríamos escribir cualquier punto del plano como 3 combinaciones lineales de los 3 vectores tomados de a pares, si es que en ningun par hay dependencia lineal. 
+
+Ahora bien, cuál es el sentido de tener más de 1 base para representar un mismo vector? El sentido es que algunas bases son más útiles que otras. Por ejemplo, las bases ortogonales, como las estándar, resultan más fáciles para trabajar. Muchas técnicas estadísticas y de ML se articulan a partir de encontrar un sistema de coordenadas óptimo para representar un dataset.
+
+
+
+# Matrices
+
+Una matriz de tamaño MxN es un arreglo rectangular de escalares. La misma está ordenada en M filas y N columnas ("MR. NiCe"). Un vector columna es una matriz de tamaño mx1 mientras que un vector fila es una matriz de tamaño 1xn.
+La dimensionalidad de una matriz puede considerarse MxN.
+
+Una matriz puede pensarse también como un arreglo de vectores columnas y bajo esta perspectiva su dimensionalidad es M (cant. de elementos de uno de  los N vectores). Al revés, si la pensamos como un conjunto de vectores fila, entonces su dimensionalidad será N (la cant. de elementos de cada uno de los M vectores).
+
+Los números xij son los componentes o elementos de la matriz.
+
+
+
+
+
+## Categorías de matrices
+
+Una matriz es cuadrada es aquella que tiene la misma cantidad de filas que columnas, mientras que las no cuadradas (M<>N) se conocen como rectangulares.
+
+Si la matriz traspuesta es igual a la matriz original entonces estamos frente a una matriz simétrica, en la cual xij = xji. Esta es una propiedad solo de las matrices cuadradas y no importa por tanto que hay en la diagonal. Las matrices antisimétricas son aquellas en que xij = -xji y su diagonal debe contener 0s. 
+
+Una matriz con todos sus elementos igual a 0 se denota así, y si solo los elementos de su diagonal no son cero estamos frente a una matriz diagonal. Si resulta que esta diagonal está compuesta solo de 1s, entonces estamos frente a una matriz identidad denotada como I y es de relevancia pues es el equivalente al número 1. Esto es, cualquier matriz multiplicada la matriz identidad es sí misma.
+
+Entendemos como la diagonal de una matriz al vector (columna) compuesto por los elementos de su diagonal, empezando siempre desde el elemento x(1,1). Si u es un vector entonces entendemos diag(u) como la matriz con los elementos de u en su diagonal y 0 en el resto de las posiciones. Por su parte, la traza de la matriz es la suma de todos sus elementos diagonales, que solo hace sentido para matrices cuadradas.
+
+Las matrices triangulares son un tipo especial de matrices cuadradas en que la mitad por encima o por debajo de la diagonal está completa mientras que la otra tiene solo 0s.
+
+Cuando hablamos de matrices de bloques, estamos ante matrices que tienen embebidas otras matrices dentro, que por simplicidad cada una está representada por un símbolo. Así la matriz A = (D, 0; 1, D) puede ser una matriz más grande en que D es (3, 0;0, 4) y 0 y 1 representan matrices de 0s y 1s respectivamente, del mismo tamaño que D.
+
+## Suma y resta
+
+La misma está definida para matrices de igual tamaño y consiste en sumar o restar elemento por elemento de a pares. Las mismas resultan conmutativas y distributivas. 
+
+```{r suma y resta de matrices}
+A = matrix(c(1,2,3,0), byrow = T, nrow = 2)
+B = matrix(c(0,4,4,2), byrow = T, nrow = 2)
+A + B
+A - B
+```
+
+Un caso especial de suma es hacer un "shift" de la matriz, al sumarle una versión escalada de la matriz identidad. Esto solo cambia los elementos de la diagonal. A  + λI = C.
+
+```{r shift}
+A + 3*diag(2)
+```
+
+Esto tiene una interpretación geométrica muy utilizada para regularizar una matriz, lo cual es muy utilizado en ML.
+
+## Multiplicación por escalar
+
+Es tan simple como multiplicar cada valor por el escalar en cuestión.
+
+```{r multiplicacion escalar}
+A * 3 # Idem a 3 * A
+```
+
+## Trasposición
+
+Esta operación consiste en convertir las filas en columnas y las columnas en fila, quedando de tamaño NxM. La primera columna siempre se convierte en la primera fila y viceversa. Con este concepto, vemos que en las matrices simétricas A = A^T y que en las antisimétricas A = -A^T.
+
+
+## Multiplicación de matrices
+
+La multiplicación de matrices es un tópico mucho más complicado que la multiplicación de vectores o por escalares. La mismo no es conmutativa, esto es que A*B != B*A, y por ello se debe entender como funciona la operación.
+
+Si escribimos A*B estamos diciendo que A multiplica a B por izquierda o que lo pre-multiplica, o lo que es lo mismo, B multiplica a A por derecha o la pos-multiplica.
+
+La regla para que sea válida es que la cantidad de columnas N de la primera matriz MxN debe ser igual a la cantidad de filas de la segunda matriz NxK; esto es, las dimensiones internas deben matchear y el resultado será de dimensión MxK, es decir, del tamaño de las dimensiones originales externas (filas de la primera y columnas de la segunda). Por ejemplo si A es de 5x2 y B es de 2x7, entonces la multiplicación A*B resulta válida y el resultado será de 5x7, pero B*A no es válida pues 7!=5.
+
+Se puede ver ahora como la forma de multiplicar vectores de igual tamaño depende de cúal se trasponga. Si tenemos por ejemplo dos vectores 5x1, esto es, vector columna de 5 dimensiones y trasponemos el primero, entonces estaremos multiplicando 1x5 * 5x1 y así obtendremos el producto escalar, de tamaño 1x1. Si en cambio trasponemos el segundo, la multiplicación será de tamaño 5x1 * 1x5 y el resultado es el producto externo, de tamaño 5x5. 
+
+Existen varias perspectivas para pensar a la multiplicación de matrices:
+
+* Puede ser pensada como una colección ordenada de productos escalares de vectores. Para ello la matriz de la izquierda debe pensarse como compuesta de vectores fila y la de la derecha por vectores columna. Cada uno de los resultados será la multiplicación de estos vectores tomados de a pares. Para una multiplicación de 2 matrices de 2x2, la matriz resultantes de igual tamaño será la multiplicación de cada fila con cada columna. 
+
+```{r multiplicacion de matrices primer approach}
+rbind((cbind(A[1,]%*%B[,1], A[1,]%*%B[,2])),
+(cbind(A[2,]%*%B[,1],A[2,]%*%B[,2])))
+
+A%*%B 
+
+```
+
+* Otra forma es como una combinación lineal de las columnas de la primera matriz, donde los pesos de cada columna están dados por cada columna de la segunda matriz. Cada resultado nos dará una columna de la matriz resultante.
+
+```{r multiplicacion de matrices segundo approach}
+cbind(matrix(B[1,1] * A[,1] + B[2,1] * A[,2]), 
+matrix(B[1,2] * A[,1] + B[2,2] * A[,2]))
+
+```
+
+### Multiplicación con una matriz diagonal
+
+Cuando multiplicamos una matriz cualquiera por otra que es una matriz diagonal  acorde, el resultado es una matriz similar a la original pero en la cual cada columna está multiplicada por el elemento correspondiente de la diagonal.
+
+```{r multiplicación a derecha por matriz diagonal}
+(C = matrix(c(1,2,3,4,3,2,5,6,7), byrow = T, nrow = 3))
+D = matrix(c(1,0,0,0,3,0,0,0,-2), byrow = T, nrow = 3) # matriz diagonal 1,3,-2
+C %*% D
+```
+
+Esto hace sentido si lo pensamos desde los enfoques planteados antes.
+
+Cuando la multiplicación opera al reves, esto es, la matriz diagonal está a la izquierda, entonces el resultado es diferente, obteniendo ahora una matriz similar a la segunda pero con cada fila (y no columna) multiplicado por el elemento diagonal correspondiente.
+
+```{r multiplicación a izquierda por matriz diagonal}
+D %*% C
+```
+
+### Orden de operaciones
+
+La multiplicación de matrices resulta asociativa, esto es, (A*B)*C = A*(B*C), pero no es conmutativa, esto es A*B != B*A.
+
+```{r asociativa}
+all((A%*%B)%*%E == A%*%(B%*%E))
+```
+
+
+```{r no conmutativa}
+all(A%*%B == B%*%A)
+```
+
+Ahora bien, si multiplicamos varias matrices y al resultado le aplicamos una operación, como por ejemplo la trasposición, el equivalente a ello es aplicar la misma operación a cada una por separado pero invirtiendo el orden de multiplicación. Esta regla se conoce como LIVE EVIL.
+
+```{r}
+all(t(A%*%B%*%E) == t(A)%*%t(B)%*%t(E))
+all(t(A%*%B%*%E) == t(E)%*%t(B)%*%t(A))
+```
+
+## Multiplicación de matriz por vector
+
+Esto no parece nada nuevo porque un vector dijimos no es si no una matriz con una de sus dimensiones igual a 1. Sin embargo, esta operación es tan importante y difundida, que es importante verla en detalle.
+
+Un primer punto interesante es que esta multiplicación, sea pre o post, siempre arrojará un vector como resultado.
+
+```{r multiplicacion matriz vector}
+v <- matrix(c(1,2), nrow = 2)
+E %*% v # 2x2 * 2x1 = m(2)x1
+t(v) %*% E # 1x2 * 2*2 = 1xn(2)
+
+```
+
+Se puede pos-multiplicar la matriz por el vector columna original, dando como resultado un vector columna de tamaño m, es decir, la cant. de filas de la matriz, o se puede pre-multipliar la matriz por el vector, en cuyo caso será necesario trasponer el vector para hacerlo fila, y el resultado un vector fila de tamaño n, es decir el número de columnas de la matriz. 
+
+Visto desde otra perspectiva, podemos decir que el vector resultante tendrá la misma orientación que el vector original pero su tamaño dependerá del número de filas o columnas de la matriz, en un caso u otro.
+
+Si continuamos con este pensamiento podemos pensar que:
+
+* Cuando el vector multiplica a la matriz por derecha, se obtiene una combinación lineal de las columnas de la matriz, cuyos coeficientes son los elementos del vector. (Arriba 1*[2;4]+2*[1;2] = [2+2;4+4] = [4;8])
+
+* Cuando el vector (traspuesto) multiplica a la matriz por izquierda, lo que se obtiene es una combinación lineal de las filas de la matriz, cuyos coeficientes también son los elementos del vector. (Arriba 1*[2;1]+2*[4;2] = [2+8;1+4] = [10;5])
+
+Si la matriz por la cual multiplicamos es simétrica, esto tiene el efecto que el resultado es similar, nada más que traspuesto.
+
+```{r multiplicacion matriz simétrica vector}
+F = matrix(c(2,1,1,4), byrow = T, nrow = 2) # Matriz simetrica
+F %*% v
+t(v) %*% F
+```
+
+### Aplicación geométrica
+
+Si partimos de un vector y lo multiplicamos por izquierda por una matriz, obtendremos un nuevo vector, del tamaño de la cantidad de filas de la matriz. Esta operación puede ser pensada entonces como una función que transforma un vector en otro, y más especificamente a esta transformación como una rotación y estiramiento/contracción del vector original.
+
+Una matriz especial para esto es la matriz de rotación, en la cual el vector resultante no cambia su magnitud sino tan solo rota, esto es, cambia su dirección por un ángulo predefinido. 
+
+```{r rotación}
+w = polar2cart(angle = 0, magnitude = 3)
+
+angle=dir_vector(w)
+movements = seq(5,360,5)
+
+plot(xlim = c(-6,6), ylim = c(-6, 6), 0, 0)
+dibujar_vector(w)
+vectors = list()
+
+
+for (movement in movements){
+rotation_angle = deg2rad(movement)
+rotation_matrix = matrix(c(cos(rotation_angle),-sin(rotation_angle),
+                           sin(rotation_angle),cos(rotation_angle)
+                           ),byrow = T, nrow = 2)
+v = as.vector(rotation_matrix%*%unlist(w))
+vectors = append(vectors, list(c(dir_vector(v),magn_vector(v))))
+dibujar_vector(v)
+}
+abline(h = 3, col = 4 )
+abline(h = -3, col = 4)
+abline(v = 3, col = 4)
+abline(v = -3, col = 4)
+
+sapply(vectors, "[[", 2) ## Same magnitude everywhere
+
+# plot(sapply(vectors, "[[", 1), sapply(vectors, "[[", 2))
+# #vectors[!is.na(lapply(vectors,is.na)==FALSE)]
+
+#  sapply(vectors, "[[", 1)[sapply(vectors, "[[", 2)== min(sapply(vectors, "[[", 2))]
+# 
+# 
+# sapply(vectors, "[[", 1)[sapply(vectors, "[[", 2)== max(sapply(vectors, "[[", 2))]
+
+
+```
+
+
+Otra matriz especial es aquella que, por el contrario, no cambia la dirección del vector pero sí su magnitud. Esto es exactamente lo mismo que multiplicar el vector por un escalar. De ello podemos concluir que el efecto de la transformación operada por esta matriz especial es el mismo que el escalado del vector. Esto es algo especial tanto desde el punto de visa del vector original, puesto que esa misma matriz rotaría a cualquier otro vector, como de la matriz, porque cualquiera otra matriz rotaría al vector en cuestión; es decir, lo especial es la combinación del vector y la matriz y cuando sucede al vector se lo conoce como el *autovector* de la matriz y al escalar con el mismo efecto resultante como *autovalor* del autovector.
+
+```{r escalado}
+eigen(A)
+
+v = polar2cart(angle = 45,magnitude = 1)
+v2 = as.vector(A%*%unlist(v))
+
+magn_dir(v)
+magn_dir(v2)
+
+plot(xlim = c(0,6), ylim = c(0, 5), 0, 0)
+dibujar_vector(v)
+dibujar_vector(v2)
+
+```
+
+Veamos ahora una transformación impura, esto es, en la cual si se altera la magnitud y dirección al mismo tiempo. Aquí, al tener la matriz de transformación 2* en su primér término, la magnitud del vector rotado va cambiando en función del ángulo de rotación, con un máximo de 2 veces la magnitud y un mínimo de igual magnitud.
+
+```{r escalado y rotación}
+w = polar2cart(angle = 0, magnitude = 3)
+
+angle=dir_vector(w)
+movements = seq(5,360,5)
+
+plot(xlim = c(-7,7), ylim = c(-7, 7), 0, 0)
+dibujar_vector(w)
+vectors = list()
+
+
+for (movement in movements){
+rotation_angle = deg2rad(movement)
+rotation_matrix = matrix(c(2*cos(rotation_angle),-sin(rotation_angle),
+                           sin(rotation_angle),cos(rotation_angle)
+                           ),byrow = T, nrow = 2)
+v = as.vector(rotation_matrix%*%unlist(w))
+vectors = append(vectors, list(c(dir_vector(v),magn_vector(v))))
+dibujar_vector(v)
+}
+
+abline(h = 3, col = 4 )
+abline(h = -3, col = 4)
+abline(v = 6, col = 4)
+abline(v = -6, col = 4)
+
+sapply(vectors, "[[", 2) ## Different magnitudes
+
+
+plot(sapply(vectors, "[[", 1), sapply(vectors, "[[", 2), xlab = "Angle", ylab = "Magnitude")
+
+
+
+```
+
+## Generando Matrices simétricas
+
+Veamos dos maneras de crear matrices simétricas partiendo de matrices no simétricas. 
+
+* El primero es (A + AT)/2, con el 2 siendo optativo y solo funcionando para matrices cuadradas, pues de lo contrario no se podrían sumar.
+
+```{r matriz simétrica via suma}
+C # No simetrica
+(C + t(C))/2 # Simétrica
+```
+
+La división por 2 es porque así se conserva la diagonal.
+
+* El segundo implica multiplicar la matriz por su traspuesta.
+
+```{r matriz simétrica via multiplicación}
+M = matrix(c(2,3,1,1,4,3), byrow = T, nrow = 2)
+M %*% t(M) #matriz cuadrada de tamaño igual a la cantidad de filas de M
+t(M) %*% M #matriz cuadrada de tamaño igual a la cantidad de columnas de M
+```
+
+Los elementos diagonales contienen suma de los cuadrados de la fila original y los no diagonales son simétricos porque utilizan los mismos operandos.
+
+Esta forma de obtener matrices simétricas es muy utilizada en estadística para obtener la matriz de varianza y covarianzas entre distintas variables. La varianza se ubica en la diagonal y las covarianzas simétricas por fuera de la diagonal (si estandarizamos las variables obtendremos la correlación en vez).
+
+## Multiplicación Hadamark entre matrices
+
+No es más que la multiplicación elemento a elemento de dos matrices, para lo cual se necesitan que las mismas tengan igual tamaño.
+
+```{r hadamark matrices}
+A*B
+```
+
+### Operaciones entre matrices simétricas
+
+Qué pasa si sumamos, multiplicamos o hacemos el producto Hadamark de 2 matrices simétricas? Conservan esta propiedad?
+
+```{r operaciones conservar simetría}
+set.seed(100)
+M1 = randi(5, 3)
+M2 = randi(5, 3)
+
+M11 = M1%*%t(M1) # Haciendolas simétricas
+M22 = M2%*%t(M2)
+
+(M11 + M22) - t(M11 + M22)# Conserva simetría
+(M11 %*% M22) - t(M11 %*% M22) # No conserva simetría
+(M11 * M22) - t(M11 * M22) # Conserva simetría
+```
+
+Como vemos, la multiplicación estándar de 2 matrices simétricas no resulta simétrica. Sin embargo, colocando una restricción y solo para matrices de 2x2, sí se puede dar el caso. La misma consiste en que todos los elementos de la diagonal de cada matriz, deben ser iguales.
+
+```{r}
+M1 = matrix(c(1,2,2,1), byrow = T, nrow = 2)
+M2 = matrix(c(3,4,4,3), byrow = T, nrow = 2)
+
+(M1 %*% M2) - t(M1 %*% M2)
+
+```
+
+### Producto de matrices diagonales
+
+Para estas matrices en particular, el producto hadamark es igual producto estándar.
+
+```{r multiplicacion matrices diagonales}
+A = diag(c(1,3,2))
+A%*%A
+A*A
+```
+
+## Producto escalar Forbenius
+
+Existen varias maneras de computarlo.
+
+* Puede calcularse como la suma del resultado de una multiplicación Hadamark entre matrices.
+
+```{r forbenius 1}
+sum(A*C)
+```
+
+
+* Vectorizar las matrices y luego haciendo el producto escalar de las mismas. Por vectorizar entendemos hacer la matriz un vector de 1 columna, en sentido de las columnas. 
+
+```{r forbenius 2}
+c(A)%*%c(C)
+```
+
+
+* Una tercera forma es obtener la traza de At multiplicado por B.
+
+```{r forbenius 3}
+sum(diag(t(A)%*%C))
+```
+
+
+Si hacemos el producto Forbenius de A consigo mismo, obtenemos la suma de todos los elementos de la matriz al cuadrado, y si tomamos la raiz cuadrada de este valor, obtenemos la norma euclidea de una matriz.
+
+```{r}
+A
+forb_prod <- sum(diag(t(A)%*%A)) # Igual a 16+9+16+16+1+4+25+9+25
+sqrt(forb_prod) #norm(A, "F")
+```
+
+## División de matrices
+
+Hay 2 formas que se parecen a una división de matrices. La primera es la división elemento a elemento. No estamos frente a una división de matrices per se, si no más bien al uso de matrices para guardar ciertos números que se pretende dividir en forma ordenada.
+
+```{r division hadamark}
+A/C
+```
+
+La segunda es la multiplicación por la matriz inversa del denominador. Tampoco es una división estrictamente hablando, pero se parece a la de escalares en que la matriz inversa se escribe con un -1 como superscript. Sin embargo debe considerarse que no todas las matrices tienen inversa. 
+
+
+## Rango de una matriz
+
+El rango de una matriz es un número que habla sobre la cantidad de información que está contiene.
+
+El mismo se escribe como r(matriz) y puede calcularse para cualquier tipo de matriz, incluso para un vector. Es un número entero no-negativo (0,1,2...) debido a que está asociado a la dimensionalidad de la información que contiene la matriz. 
+
+El máximo rango posible de una matriz es el mínimo entre la cantidad de filas y columnas de la misma, y el mismo es una propiedad de la matriz entera, no de sus filas o columnas.
+
+Si una matriz es cuadrada y tiene su máximo ranking posible, entonces se la denomina "Matriz de Rango Completo".
+
+Si una matriz es rectangular y tiene más filas que columnas, esto es, m>n, y su ranking es n, es decir el máximo posible, se la denomina "Matriz Columnar Completa". Si en cambio es más larga que alta, es decir que n>m, y su ranking es el máximo posible m, se denomina "Matriz de Fila Completa".
+
+Si el rango de una matriz es menor al máximo rango posible, se conoce como Matriz de rango reducido, deficiente, degenerada o de rango bajo. En el caso especial de una matriz cuadrada se la conoce como Matriz Singular o no Invertible. 
+
+Para definirlo más propiamente, podemos decir que el rango de una matriz es la mayor cantidad de filas o columnas que pueden formar un conjunto linealmente independiente de vectores. En uno u otro caso el resultado será el mismo.
+
+Por ejemplo, una matriz de 3x3 será de Rango completo si contiene tres vectores fila o columna linealmente independientes, pero a lo sumo puedo tomar de a pares para lograr conjuntos linealmente independientes, entonces tenemos una matriz de rango deficiente, y geométricamente tenemos un plano 2d embebido en el plano ambiente 3d, en el cual están los 3 vectores en cuestión.
+
+### Cálculo del rango
+
+Existen diferentes métodos para arribar al rango de una matriz. Un primer approach puede ser analizar la premisa anterior en matrices pequeñas a ojo, aunque no es muy confiable.
+
+Hay otros métodos matemáticos para alcanzar esta respuesta, pero sin embargo son temas todavía no introducidos. 
+
+Además se debe considerar el pequeño ruido que puede existir en los datos, que haga computar el rango de una matriz mayor al que realmente es.
+
+### Rango de la suma y multiplicación de matrices
+
+Para la suma (y resta), lo que se puede afirmar es que el rango de la suma de las matrices podrá ser a lo sumo igual a la suma del rango de las matrices sumadas (o menor); esto es, nunca mayor. 
+
+```{r rango de suma de matrices}
+set.seed(100)
+A = randi(10, 5, 3)
+A = cbind(A[,ncol(A)], A) # Repito última columna para hacer de rango incompleto
+B = randi(10, 5, 2)
+B = cbind(B,B[,ncol(B-1)],B[,ncol(B)] ) # Repito ultimas 2 columnas para hacerla de rango incompleto
+paste(rankMatrix(A), rankMatrix(B))
+
+rankMatrix(A+B)[1] # El rango resultante es 4, mayor al de las matrices sumadas por separado pero menor a la suma de sus rangos
+```
+
+
+En cuanto a la multiplicación, el rango del producto podrá ser a lo sumo igual al mínimo entre los rangos de la matrices multiplicadas, pero nunca mayor a este valor.
+
+¿Como podemos aprovechar esta propiedad para generar una matriz con un determinado tamaño, por ejemplo 8x7, y un determinado ranking, por ejemplo 4?
+
+```{r}
+set.seed(10)
+A = randi(10, 8, 4) # Suponemos que si son números al azar, es full rango pero lo comprobamos
+B = randi(10, 4, 7) # Debe matchear la cantidad de filas de esta con la de columnas anterior para que se puedan multiplicar
+
+rankMatrix(A)[1]
+
+rankMatrix(B)[1]
+
+AB = A%*%B # Sabemos que el rango de la matriz resultante no podrá ser mayor a 4
+
+dim(AB)
+AB
+rankMatrix(AB)[1]
+
+```
+
+Generalizando, podemos decir que multiplicando dos matrices MxR y RxN obtendremos una de tamaño MxN con rango igual a R, siempre y cuando R sea menor tanto a M como a N (respetando así la propiedad de que el rango de una matriz es a lo sumo el menor entre la cantidad de filas y columnas, aqui r en ambos casos). 
+
+
+Por otro lado, la multiplicación de una matriz por un escalar no afecta su rango.
+
+```{r}
+require(Matrix)
+rankMatrix(A)[1]
+rankMatrix(A*12050120)[1]
+rankMatrix(A*-15012)[1]
+```
+
+### Rango de multiplicación por traspuesta
+
+Por otro lado, el rango de una matriz cualquiera será siempre igual al de su matriz traspuesta, y tambien al de la multiplicación entre ambas, cualquiera sea el orden.
+
+```{r}
+A = randi(8,4,3) # Full rango, 3, el menor entre M y N
+rankMatrix(A)[1]
+rankMatrix(t(A)%*%A)[1]
+rankMatrix(A%*%t(A))[1]
+rankMatrix(A)[1]
+
+t(A)%*%A # Da como resultado una matriz NxN con rango completo N
+rankMatrix(t(A)%*%A)[1]
+
+
+B = randi(8,3,4) # Full rango,3, el menor entre M y N
+B%*%t(B) # Da como resultado una matriz MxM con rango completo M
+rankMatrix(B%*%t(B))[1]
+
+
+```
+
+Esta propiedad es importante porque como vimos, la multiplicación de una matriz por su traspuesta nos dará no solamente una matriz cuadrada y simétrica, si no que la misma será de rango completo. 
+
+Esto es, para una matriz donde M>N, es decir alta, el resultado de multiplicar la matriz por izquierda será una matriz NxN con rango completo N, y, para una matriz ancha, esto es con M<N entonces el resultado de multiplicarla por derecha será una matriz MxM con rango completo M.
+
+Estas matrices tienen propiedades muy interesantes que las hacen deseables en muchos campos.
+
+### Shifting para obtener matrices de rango completo
+
+Como las matrices de rango completo son muy deseables, es posible utilizar transformaciones para llevar una matriz de rango deficiente a una de rango completo.
+
+Para matrices cuadradas se le puede sumar un término λI, que solo modifica la diagonal y que por su forma es de rango completo. Es que de esa manera se conserva la dimensión de la tabla original, pero se logra romper con la dependencia lineal existente.
+
+```{r shifting para rango completo}
+A = randi(10,5)
+A[,ncol(A)] = A[,ncol(A)-1] # Le bajo el rango
+A
+rankMatrix(A)[1]
+
+(AA = A + 0.01*diag(ncol(A)))
+rankMatrix(AA)[1]
+```
+
+¿ Cuál es el valor indicado de lambda? Es una pregunta difícil. Se pretende alterar lo menos posible la información original de la matriz. 

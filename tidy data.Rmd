@@ -20,7 +20,7 @@ This chapter will give you a practical introduction to tidy data and the accompa
 
 You can represent the same underlying data in multiple ways. The example below shows the same data organised in four different ways. Each dataset shows the same values of four variables country, year, population, and cases, but each dataset organises the values in a different way.
 
-```{r}
+```{r tables example}
 table1
 table2
 table3
@@ -142,9 +142,9 @@ table3 %>%
 You can also pass a vector of integers to sep. separate() will interpret the integers as positions to split at. Positive values start at 1 on the far-left of the strings; negative value start at -1 on the far-right of the strings. When using integers to separate strings, the length of sep should be one less than the number of names in into.
 
 ```{r separate by position}
-table5 <- 
+(table5 <- 
   table3 %>% 
-  separate(year, into = c("millenium","century","decade", "year"), sep = c(1,2,3,4))
+  separate(year, into = c("millenium","century","decade", "year"), sep = c(1,2,3,4)))
 
 ```
 
@@ -199,7 +199,7 @@ stocks %>%
   gather(year, return, `2015`:`2016`, na.rm = TRUE)
 ```
 
-Another important tool for making missing values explicit in tidy data is complete():
+Another important tool for making missing values explicit in tidy data is *complete()*:
 
 ```{r completing implicit NA}
 stocks %>% 

@@ -180,7 +180,7 @@ ggplot(df, aes(variedad, aceite))+
 # Test de la Mediana ------------------------------------------------------
 
 
-# Este se generaliza a más de 2 poblaciones y no requiere supuestos de igualdad distribucional
+# Este se generaliza a m?s de 2 poblaciones y no requiere supuestos de igualdad distribucional
 
 # H0: mediana de las poblaciones independientes son iguales
 # H1: alguna de las medianas de las pobs. independientes difiere
@@ -188,7 +188,7 @@ ggplot(df, aes(variedad, aceite))+
 library(RVAideMemoire)
 
 mood.medtest(aceite~variedad, data = df )
-# Rechazo H0 porque el p-valor es pequeño
+# Rechazo H0 porque el p-valor es peque?o
 
 
 
@@ -198,7 +198,7 @@ mood.medtest(aceite~variedad, data = df )
 
 # Queremos comparar la media de varios grupos
 # Esta prueba requiere que las variables aleatorias sean normales
-# y homocedásticas, esto es, tengan igual varianza
+# y homocedasticas, esto es, tengan igual varianza
 
 # H0: todas las medias poblacionales son iguales
 # H1: al menos una media poblacional difiere del resto
@@ -211,9 +211,6 @@ proms <- aggregate(. ~ marca, te, mean)
 desvios <- aggregate(. ~ marca, te, sd)
 varianzas <- aggregate(. ~ marca, te, var)
 n <- aggregate(. ~ marca, te, length)
-
-ggplot(te, mapping = aes(y = vitamina_b, x= marca, fill = marca))+
-  geom_boxplot()
 
 
 n_total = sum(n$vitamina_b)
@@ -250,14 +247,20 @@ summary(t_anova) # Rechazamos H0: al menos una media difiere
 
 
 
-# Para que el test F sea válido el modelo de k muestras normales independientes con varianzas iguales
-# tiene que ser aproximadamente cierto.
+# Para que el test F sea valido el modelo de k muestras normales independientes
+# con varianzas iguales tiene que ser aproximadamente cierto.
 
 
 
 
 
 # Tests de Homocedasticidad ------------------------------------------------
+
+# Boxplot, a ojo, las cajas parecen ser todas de igual ancho y sin outliers
+
+library(ggplot2)
+ggplot(te, mapping = aes(y = vitamina_b, x= marca, fill = marca))+
+  geom_boxplot()
 
 # Test de Bartlet
 
@@ -271,7 +274,7 @@ bartlett.test(te$vitamina_b, te$marca)
 
 # Test de Levene
 
-# Es más robusto que el anterior
+# Es mas robusto que el anterior
 
 library(car)
 
@@ -284,18 +287,18 @@ leveneTest(te$vitamina_b, te$marca)
 
 # QQPlot
 
-# La evaluamos gráficamente
+# La evaluamos graficamente
 
 y=quantile ( te$vitamina_b, c (0.25 , 0.75) , type=5)
 # Encuentra los cuartiles 1 y 3 para la muestra
 x <- qnorm( c (0.25 , 0.75))
-# Encuentra los cuartiles 1 y 3 para la distribuci ón Normal
-slope <- diff (y) / diff (x) # Calcula la pendiente de la recta de regresi ón
-int <- y[1] - slope * x[1] # Calcula la constante de la recta de regresi ón
+# Encuentra los cuartiles 1 y 3 para la distribucion Normal
+slope <- diff (y) / diff (x) # Calcula la pendiente de la recta de regresion
+int <- y[1] - slope * x[1] # Calcula la constante de la recta de regresion
 
 ggplot (te , aes (sample=residuals ( te_anova ))) +
   stat_qq( alpha = 0.5 , color="royalblue") +
-  xlab ("Valores teóricos") +
+  xlab ("Valores te?ricos") +
   ylab ("Valores de la muestra") +
   geom_abline ( int=int , slope=slope , color="indianred")
 
@@ -347,9 +350,9 @@ library(dplyr)
   group_by(dieta) %>%
   summarise_at(vars(colesterol), funs(mean, var, sd, n(),)))
 
-#pordieta=split ( conejos$colesterol , conejos$dieta ) # Separa los datos según dieta
+#pordieta=split ( conejos$colesterol , conejos$dieta ) # Separa los datos seg?n dieta
 #lapply ( pordieta ,mean) # Calcula las medias
-#lapply ( pordieta , sd) # Calcula los desv í os estándar
+#lapply ( pordieta , sd) # Calcula los desv ? os est?ndar
 
 conejos_anova = aov(colesterol ~ dieta, data = conejos)
 summary(conejos_anova)
@@ -365,7 +368,7 @@ shapiro.test(conejos.anova$residuals)
 leveneTest(colesterol~dieta, data = conejos)
 # Rechazamos homocedasticidad
 
-# Se intenta transformacion de Box-Cox para cambiar la situación
+# Se intenta transformacion de Box-Cox para cambiar la situacion
 library(MASS)
 
 bc <- boxcox(colesterol~dieta, data = conejos)
@@ -395,8 +398,8 @@ TukeyHSD(t_conejos_anova, conf.level = .95)
 
 # Test de Kruskal-Wallis --------------------------------------------------
 
-# Esta prueba contrasta la hipótesis nula que establece que las k muestras independientes proceden
-# de la misma población y, en particular, todas ellas tienen la misma posición central
+# Esta prueba contrasta la hip?tesis nula que establece que las k muestras independientes proceden
+# de la misma poblaci?n y, en particular, todas ellas tienen la misma posici?n central
 
 # H0: Todas las medianas poblacionales son iguales
 # H1: Alguna al menos no lo es
