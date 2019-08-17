@@ -346,3 +346,238 @@ if (y < 20) {
 ```
 
 ## Function arguments
+
+The arguments to a function typically fall into two broad sets: one set supplies the data to compute on, and the other supplies arguments that control the details of the computation. 
+
+Generally, data arguments should come first. Detail arguments should go on the end, and usually should have default values. You specify a default value in the same way you call a function with a named argument:
+
+```{r}
+mean_ci <- function(x, conf = 0.95) {
+  se <- sd(x) / sqrt(length(x))
+  alpha <- 1 - conf
+  mean(x) + se * qnorm(c(alpha / 2, 1 - alpha / 2))
+}
+
+x <- runif(100)
+mean_ci(x)
+mean_ci(x, conf = 0.99)
+
+```
+
+The default value should almost always be the most common value. The few exceptions to this rule are to do with safety. For example, it makes sense for na.rm to default to FALSE because missing values are important. Even though na.rm = TRUE is what you usually put in your code, it’s a bad idea to silently ignore missing values by default.
+
+When you call a function, you typically omit the names of the data arguments, because they are used so commonly. If you override the default value of a detail argument, you should use the full name.
+
+```{r}
+# Good
+mean(1:10, na.rm = TRUE)
+
+# Bad
+mean(x = 1:10, , FALSE)
+mean(, TRUE, x = c(1:10, NA))
+```
+
+You can refer to an argument by its unique prefix (e.g. mean(x, n = TRUE)), but this is generally best avoided given the possibilities for confusion.
+
+Notice that when you call a function, you should place a space around = in function calls, and always put a space after a comma, not before (just like in regular English). Using whitespace makes it easier to skim the function for the important components.
+
+```{r}
+# Good
+average <- mean(feet / 12 + inches, na.rm = TRUE)
+
+# Bad
+average<-mean(feet/12+inches,na.rm=TRUE)
+```
+
+### Choosing names
+
+The names of the arguments are also important. R doesn’t care, but the readers of your code (including future-you!) will. Generally you should prefer longer, more descriptive names, but there are a handful of very common, very short names. It’s worth memorising these:
+
+* x, y, z: vectors.
+* w: a vector of weights.
+* df: a data frame.
+* i, j: numeric indices (typically rows and columns).
+* n: length, or number of rows.
+* p: number of columns.
+
+Otherwise, consider matching names of arguments in existing R functions. For example, use na.rm to determine if missing values should be removed.
+
+
+### Checking values
+
+As you start to write more functions, you’ll eventually get to the point where you don’t remember exactly how your function works. At this point it’s easy to call your function with invalid inputs. To avoid this problem, it’s often useful to make constraints explicit. 
+
+It’s good practice to check important preconditions, and throw an error (with stop()), if they are not true:
+
+```{r}
+wt_mean <- function(x, w) {
+  if (length(x) != length(w)) {
+    stop("hey,`x` and `w` must be the same length", call. = FALSE)
+  }
+  sum(w * x) / sum(w)
+}
+
+wt_mean(c(2,3), 1)
+```
+
+Be careful not to take this too far. There’s a tradeoff between how much time you spend making your function robust, versus how long you spend writing it. For example, if you also added a na.rm argument, I probably wouldn’t check it carefully. 
+
+This is a lot of extra work for little additional gain. A useful compromise is the built-in stopifnot(): it checks that each argument is TRUE, and produces a generic error message if not.
+
+```{r}
+wt_mean <- function(x, w, na.rm = FALSE) {
+  stopifnot(is.logical(na.rm), length(na.rm) == 1)
+  stopifnot(length(x) == length(w))
+  
+  if (na.rm) {
+    miss <- is.na(x) | is.na(w)
+    x <- x[!miss]
+    w <- w[!miss]
+  }
+  sum(w * x) / sum(w)
+}
+
+wt_mean(1:6, 6:1, na.rm = "ss") 
+wt_mean(1:4, 6:1, na.rm = F) 
+```
+
+Note that when using stopifnot() you assert what should be true rather than checking for what might be wrong.
+
+###  Dot-dot-dot (…)
+
+Many functions in R take an arbitrary number of inputs. 
+
+How do these functions work? They rely on a special argument: ... (pronounced dot-dot-dot). This special argument captures any number of arguments that aren’t otherwise matched.
+
+It’s useful because you can then send those ... on to another function. This is a useful catch-all if your function primarily wraps another function. For example, I commonly create these helper functions that 
+
+```{r dot dot dot}
+commas <- function(...) stringr::str_c(..., collapse = ", ")
+commas(letters[1:10])
+#> [1] "a, b, c, d, e, f, g, h, i, j"
+
+rule <- function(..., pad = "-") {
+  title <- paste0(...)
+  width <- getOption("width") - nchar(title) - 5
+  cat(title, " ", stringr::str_dup(pad, width), "\n", sep = "")
+}
+
+rule("Important output", " here")
+```
+
+Here ... lets me forward on any arguments that I don’t want to deal with to str_c(). It’s a very convenient technique. But it does come at a price: any misspelled arguments will not raise an error. This makes it easy for typos to go unnoticed:
+
+```{r}
+x <- c(1, 2)
+sum(x, na.mr = TRUE) # Adds 1 for True
+```
+
+If you just want to capture the values of the ..., use list(...).
+
+```{r}
+capture  <- function(...) list(...)
+capture(1, 2, 3)
+```
+
+### Lazy evaluation
+
+Arguments in R are lazily evaluated: they’re not computed until they’re needed. That means if they’re never used, they’re never called. This is an important property of R as a programming language, but is generally not important when you’re writing your own functions for data analysis. 
+
+
+## Return values
+
+Figuring out what your function should return is usually straightforward: it’s why you created the function in the first place! There are two things you should consider when returning a value:
+
+1. Does returning early make your function easier to read?
+2. Can you make your function pipeable?
+
+### Explicit return statements
+
+The value returned by the function is usually the last statement it evaluates, but you can choose to return early by using return(). I think it’s best to save the use of return() to signal that you can return early with a simpler solution. A common reason to do this is because the inputs are empty:
+
+```{r early return}
+complicated_function <- function(x, y, z) {
+  if (length(x) == 0 || length(y) == 0) {
+    return(0)
+  }
+ # Complicated code here
+}
+```
+
+
+Another reason is because you have a if statement with one complex block and one simple block.  If the first block is very long, by the time you get to the else, you’ve forgotten the condition. One way to rewrite it is to use an early return for the simple case:
+
+```{r early return 2}
+f <- function() {
+  if (!x) {
+    return(something_short)
+  }
+
+  # Do 
+  # something
+  # that
+  # takes
+  # many
+  # lines
+  # to
+  # express
+}
+```
+
+This tends to make the code easier to understand, because you don’t need quite so much context to understand it.
+
+### Writing pipeable functions
+
+If you want to write your own pipeable functions, it’s important to think about the return value. Knowing the return value’s object type will mean that your pipeline will “just work”. For example, with dplyr and tidyr the object type is the data frame.
+
+There are two basic types of pipeable functions: *transformations* and *side-effects.* With transformations, an object is passed to the function’s first argument and a modified object is returned. With side-effects, the passed object is not transformed. Instead, the function performs an action on the object, like drawing a plot or saving a file. Side-effects functions should “invisibly” return the first argument, so that while they’re not printed they can still be used in a pipeline. 
+
+```{r invisibly return object}
+show_missings <- function(df) {
+  n <- sum(is.na(df))
+  cat("Missing values: ", n, "\n", sep = "")
+  invisible(df)
+}
+
+show_missings(mtcars)
+```
+
+If we call it interactively, the invisible() means that the input df doesn’t get printed out. But it’s still there, it’s just not printed by default.
+
+```{r}
+x <- show_missings(mtcars) 
+class(x)
+dim(x)
+```
+
+And we can still use it in a pipe:
+
+```{r}
+mtcars %>% 
+  show_missings() %>% 
+  mutate(mpg = ifelse(mpg < 20, NA, mpg)) %>% 
+  show_missings() 
+```
+
+## Environment
+
+The last component of a function is its environment. This is not something you need to understand deeply when you first start writing functions. However, it’s important to know a little bit about environments because they are crucial to how functions work. The environment of a function controls how R finds the value associated with a name. For example, take this function:
+
+```{r}
+f <- function(x) {
+  x + y
+}
+```
+
+In many programming languages, this would be an error, because y is not defined inside the function. In R, this is valid code because R uses rules called lexical scoping to find the value associated with a name. Since y is not defined inside the function, R will look in the environment where the function was defined:
+
+```{r}
+y <- 100
+f(10)
+y <- 1000
+f(10)
+```
+
+This behaviour seems like a recipe for bugs, and indeed you should avoid creating functions like this deliberately, but by and large it doesn’t cause too many problems (especially if you regularly restart R to get to a clean slate).
+
+The advantage of this behaviour is that from a language standpoint it allows R to be very consistent. Every name is looked up using the same set of rules.
